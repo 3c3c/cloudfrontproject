@@ -21,12 +21,23 @@ export interface Permission {
   description: string;
 }
 
-export type ViewState = 
+export interface Log {
+  id: string;
+  time: string;
+  user: string;
+  module: string;
+  action: string;
+  ip: string;
+  status: 'success' | 'fail';
+}
+
+export type ViewState =
   | { type: 'roles' }
   | { type: 'roleDetail'; role: Role }
   | { type: 'users' }
   | { type: 'userDetail'; user: User }
-  | { type: 'permissions' };
+  | { type: 'permissions' }
+  | { type: 'logs' };
 
 export type ModalState = 
   | { type: 'none' }

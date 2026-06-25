@@ -10,12 +10,13 @@ import { RoleDetail } from './components/RoleDetail';
 import { UserList } from './components/UserList';
 import { UserDetail } from './components/UserDetail';
 import { PermissionList } from './components/PermissionList';
+import { LogList } from './components/LogList';
 import { CreateRoleModal, EditRoleModal, RoleMemberModal, RolePermissionModal } from './components/RoleModals';
 import { CreateUserModal, EditUserModal, SelectRoleModal, UserPermissionModal, ResetPasswordModal } from './components/UserModals';
 import { PermissionModal, BatchAuthorizeModal } from './components/PermissionModals';
 import { Auth } from './components/Auth';
 import { ViewState, ModalState, Role, User, Permission } from './types';
-import { mockRoles, mockUsers, mockPermissions } from './data';
+import { mockRoles, mockUsers, mockPermissions, mockLogs } from './data';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -49,7 +50,7 @@ export default function App() {
     <div className="flex h-screen w-full bg-gray-50 font-sans text-gray-800 overflow-hidden">
       <Sidebar 
         currentNav={viewState.type === 'roleDetail' ? 'roles' : (viewState.type === 'userDetail' ? 'users' : viewState.type)} 
-        onNavChange={(nav) => setViewState({ type: nav as 'roles' | 'users' | 'permissions' })} 
+        onNavChange={(nav) => setViewState({ type: nav as 'roles' | 'users' | 'permissions' | 'logs' })}
         onLogout={() => setIsAuthenticated(false)}
         currentUser={currentUser || undefined}
       />
@@ -89,6 +90,10 @@ export default function App() {
 
         {viewState.type === 'permissions' && (
           <PermissionList permissions={mockPermissions} openModal={handleOpenModal} />
+        )}
+
+        {viewState.type === 'logs' && (
+          <LogList logs={mockLogs} />
         )}
       </main>
 
