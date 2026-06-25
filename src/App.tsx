@@ -17,15 +17,27 @@ import { PermissionModal, BatchAuthorizeModal } from './components/PermissionMod
 import { Auth } from './components/Auth';
 import { ViewState, ModalState, Role, User, Permission } from './types';
 import { mockRoles, mockUsers, mockPermissions, mockLogs } from './data';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+// 内部主应用组件，使用认证上下文
+function MainApp() {
+  const { isAuthenticated, user, logout, loading } = useAuth();
   const [viewState, setViewState] = useState<ViewState>({ type: 'roles' });
   const [modalState, setModalState] = useState<ModalState>({ type: 'none' });
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <p className="mt-2 text-sm text-gray-600">加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
-    return <Auth onLogin={() => { setIsAuthenticated(true); setCurrentUser(mockUsers[0]); }} />;
+    return <Auth />;
   }
 
   const handleOpenModal = (type: ModalState['type'], data?: Role | User | Permission) => {
@@ -46,44 +58,53 @@ export default function App() {
     setModalState({ type: 'none' });
   };
 
+  // 构建当前用户对象
+  const currentUser = user ? {
+    id: user.id,
+    account: user.username,
+    name: user.username,
+    avatar: user.avatar,
+    authorities: user.authorities,
+  } as User : null;
+
   return (
     <div className="flex h-screen w-full bg-gray-50 font-sans text-gray-800 overflow-hidden">
-      <Sidebar 
-        currentNav={viewState.type === 'roleDetail' ? 'roles' : (viewState.type === 'userDetail' ? 'users' : viewState.type)} 
+      <Sidebar
+        currentNav={viewState.type === 'roleDetail' ? 'roles' : (viewState.type === 'userDetail' ? 'users' : viewState.type)}
         onNavChange={(nav) => setViewState({ type: nav as 'roles' | 'users' | 'permissions' | 'logs' })}
-        onLogout={() => setIsAuthenticated(false)}
+        onLogout={logout}
         currentUser={currentUser || undefined}
       />
-      
+
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
         {viewState.type === 'roles' && (
-          <RoleList 
-            roles={mockRoles} 
-            onViewDetail={(role) => setViewState({ type: 'roleDetail', role })} 
+          <RoleList
+            roles={mockRoles}
+            onViewDetail={(role) => setViewState({ type: 'roleDetail', role })}
             openModal={handleOpenModal}
           />
         )}
-        
+
         {viewState.type === 'roleDetail' && (
-          <RoleDetail 
-            role={viewState.role} 
-            onBack={() => setViewState({ type: 'roles' })} 
+          <RoleDetail
+            role={viewState.role}
+            onBack={() => setViewState({ type: 'roles' })}
             openModal={handleOpenModal}
           />
         )}
 
         {viewState.type === 'users' && (
-          <UserList 
-            users={mockUsers} 
-            onViewDetail={(user) => setViewState({ type: 'userDetail', user })} 
+          <UserList
+            users={mockUsers}
+            onViewDetail={(user) => setViewState({ type: 'userDetail', user })}
             openModal={handleOpenModal}
           />
         )}
 
         {viewState.type === 'userDetail' && (
-          <UserDetail 
-            user={viewState.user} 
-            onBack={() => setViewState({ type: 'users' })} 
+          <UserDetail
+            user={viewState.user}
+            onBack={() => setViewState({ type: 'users' })}
             openModal={handleOpenModal}
           />
         )}
@@ -111,5 +132,14 @@ export default function App() {
       {modalState.type === 'editPermission' && <PermissionModal onClose={handleCloseModal} permission={modalState.permission} />}
       {modalState.type === 'batchAuthorize' && <BatchAuthorizeModal onClose={handleCloseModal} permission={modalState.permission} />}
     </div>
+  );
+}
+
+// 导出应用组件，包装在认证提供者中
+export default function App() {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
   );
 }

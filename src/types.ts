@@ -8,11 +8,24 @@ export interface Role {
 export interface User {
   id: string;
   account: string;
+  username?: string;
   name: string;
+  nickname?: string;
   status: boolean;
   phone?: string;
+  mobile?: string;
   email?: string;
   avatar?: string;
+  authorities?: string[];
+  mustChangePassword?: boolean;
+}
+
+export interface AuthUser {
+  id: string;
+  username: string;
+  avatar?: string;
+  authorities: string[];
+  mustChangePassword: boolean;
 }
 
 export interface Permission {

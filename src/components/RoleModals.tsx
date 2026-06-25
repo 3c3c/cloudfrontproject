@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import { X, AlertTriangle, Search } from 'lucide-react';
 import { Role } from '../types';
 import { mockUsers, mockPermissions } from '../data';
@@ -6,7 +7,7 @@ interface BaseModalProps {
   onClose: () => void;
 }
 
-function ModalWrapper({ children, title, onClose, widthClass = "max-w-[680px]" }: { children: React.ReactNode, title: string, onClose: () => void, widthClass?: string }) {
+function ModalWrapper({ children, title, onClose, widthClass = "max-w-[680px]" }: { children: ReactNode, title: string, onClose: () => void, widthClass?: string }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className={`bg-white w-full ${widthClass} rounded-sm shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200`}>
