@@ -4,8 +4,9 @@
  */
 
 import { useState, type FormEvent } from 'react';
-import { User, Lock, Mail, ChevronRight, AlertCircle } from 'lucide-react';
+import { User, Lock, Mail, ChevronRight, AlertCircle, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { encryptPassword } from '../utils/crypto';
 
 interface AuthProps {
   onLoginSuccess?: () => void;
@@ -89,7 +90,19 @@ export function Auth({ onLoginSuccess }: AuthProps) {
 
     try {
       setIsSubmitting(true);
-      await login({ username, password });
+      setError('');
+
+      // 加密密码
+      let encryptedPassword = '';
+      try {
+        encryptedPassword = await encryptPassword(password);
+      } catch (encryptError) {
+        setError('密码加密失败，请检查网络连接');
+        setIsSubmitting(false);
+        return;
+      }
+
+      await login({ username, password: encryptedPassword });
       setSuccess('登录成功！');
       onLoginSuccess?.();
     } catch (err) {
@@ -110,10 +123,22 @@ export function Auth({ onLoginSuccess }: AuthProps) {
 
     try {
       setIsSubmitting(true);
+      setError('');
+
+      // 加密密码
+      let encryptedPassword = '';
+      try {
+        encryptedPassword = await encryptPassword(password);
+      } catch (encryptError) {
+        setError('密码加密失败，请检查网络连接');
+        setIsSubmitting(false);
+        return;
+      }
+
       const userId = await register({
         username,
         nickname,
-        password,
+        password: encryptedPassword,
         mobile: mobile || undefined,
         email: email || undefined,
       });
@@ -352,6 +377,12 @@ export function Auth({ onLoginSuccess }: AuthProps) {
               )}
             </button>
           </form>
+
+          {/* 安全提示 */}
+          <div className="mt-6 flex items-center justify-center gap-2 text-xs text-gray-500">
+            <Shield className="h-3.5 w-3.5 text-green-600" />
+            <span>密码采用 RSA 加密传输，保障您的账户安全</span>
+          </div>
 
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-600">

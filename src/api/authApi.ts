@@ -3,7 +3,7 @@
  * 基于 cloud-auth-api.md 文档实现
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9527';
 const AUTH_PREFIX = '/auth';
 
 export interface LoginRequest {

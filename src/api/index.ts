@@ -5,7 +5,7 @@
 
 import { useAuth } from '../contexts/AuthContext';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9527';
 
 // API 请求配置接口
 interface RequestConfig {
