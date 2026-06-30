@@ -5,7 +5,8 @@
 
 import JSEncrypt from 'jsencrypt';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+// 使用代理模式，所有请求通过 Vite 代理到后端网关
+const API_BASE_URL = '/api';
 
 // 公钥缓存
 let publicKeyCache: string | null = null;

@@ -3,7 +3,8 @@
  * 基于 cloud-auth-api.md 文档实现
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9527';
+// 使用代理模式，所有请求通过 Vite 代理到后端网关
+const API_BASE_URL = '/api';
 const AUTH_PREFIX = '/auth';
 
 export interface LoginRequest {
