@@ -225,6 +225,30 @@ class RoleAPI {
       throw new Error(result.message || '批量删除角色失败');
     }
   }
+
+  /**
+   * 批量更新角色状态
+   */
+  async batchUpdateRoleStatus(ids: number[], enabled: number): Promise<void> {
+    const response = await fetch(`${this.baseUrl}${ROLE_PREFIX}/batch/status`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': localStorage.getItem('auth_token') || '',
+      },
+      body: JSON.stringify({ ids, enabled }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || '批量更新角色状态失败');
+    }
+
+    const result: ApiResponse<null> = await response.json();
+    if (result.code !== 200) {
+      throw new Error(result.message || '批量更新角色状态失败');
+    }
+  }
 }
 
 export const roleAPI = new RoleAPI();

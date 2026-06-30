@@ -54,12 +54,12 @@ function MainApp() {
     }
   };
 
-  const handleCloseModal = () => {
+  const handleCloseModal = (shouldRefresh = false) => {
     const currentType = modalState.type;
     setModalState({ type: 'none' });
 
-    // 如果是角色相关的模态框关闭，刷新角色列表
-    if (['createRole', 'editRole', 'roleMember', 'rolePermission'].includes(currentType)) {
+    // 只有在明确需要刷新时才刷新列表（如创建、编辑成功后）
+    if (shouldRefresh && ['createRole', 'editRole', 'roleMember', 'rolePermission'].includes(currentType)) {
       setRefreshKey(prev => prev + 1);
     }
   };

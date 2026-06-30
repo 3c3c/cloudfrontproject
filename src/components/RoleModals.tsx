@@ -11,16 +11,16 @@ import { roleAPI } from '../api/roleApi';
 import { toast } from '../utils/toastHelpers';
 
 interface BaseModalProps {
-  onClose: () => void;
+  onClose: (shouldRefresh?: boolean) => void;
 }
 
-function ModalWrapper({ children, title, onClose, widthClass = "max-w-[680px]" }: { children: ReactNode, title: string, onClose: () => void, widthClass?: string }) {
+function ModalWrapper({ children, title, onClose, widthClass = "max-w-[680px]" }: { children: ReactNode, title: string, onClose: (shouldRefresh?: boolean) => void, widthClass?: string }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className={`bg-white w-full ${widthClass} rounded-sm shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200`}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="text-lg font-medium text-gray-800">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+          <button onClick={() => onClose(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -72,9 +72,9 @@ export function CreateRoleModal({ onClose }: BaseModalProps) {
         remark,
         enabled: enabled ? 1 : 0,
       });
-      // 创建成功，显示成功提示并关闭模态框
+      // 创建成功，显示成功提示并关闭模态框（触发刷新）
       toast.success('角色创建成功', 3000);
-      onClose();
+      onClose(true);
     } catch (err) {
       console.error('创建角色失败:', err);
       toast.error(err instanceof Error ? err.message : '创建角色失败', 5000);
@@ -171,7 +171,7 @@ export function CreateRoleModal({ onClose }: BaseModalProps) {
           </button>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => onClose(false)}
             disabled={loading}
             className="bg-white text-gray-600 border border-gray-300 px-8 py-2 rounded-sm text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -227,9 +227,9 @@ export function EditRoleModal({ onClose, role }: BaseModalProps & { role?: Role 
         remark,
         enabled: enabled ? 1 : 0,
       });
-      // 更新成功，显示成功提示并关闭模态框
+      // 更新成功，显示成功提示并关闭模态框（触发刷新）
       toast.success('角色更新成功', 3000);
-      onClose();
+      onClose(true);
     } catch (err) {
       console.error('更新角色失败:', err);
       toast.error(err instanceof Error ? err.message : '更新角色失败', 5000);
@@ -331,7 +331,7 @@ export function EditRoleModal({ onClose, role }: BaseModalProps & { role?: Role 
           </button>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => onClose(false)}
             disabled={loading}
             className="bg-white text-gray-600 border border-gray-300 px-8 py-2 rounded-sm text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >

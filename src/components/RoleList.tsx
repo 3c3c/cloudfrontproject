@@ -100,13 +100,13 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
       console.log('切换角色状态:', { roleId: role.id, roleName: role.roleName, currentEnabled: role.enabled, newEnabled });
 
       await roleAPI.updateRoleStatus(role.id, newEnabled);
-      console.log('状态更新成功，刷新列表');
 
-      // 刷新列表
-      await fetchRoles();
-
-      // 显示成功提示
-      toast.success(`角色"${role.roleName}"状态已更新`, 3000);
+      // 直接更新本地状态，不刷新整个列表
+      setRoles(prevRoles =>
+        prevRoles.map(r =>
+          r.id === role.id ? { ...r, enabled: newEnabled } : r
+        )
+      );
     } catch (err) {
       console.error('更新角色状态失败:', err);
       const errorMessage = err instanceof Error ? err.message : '更新角色状态失败';
@@ -184,16 +184,15 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
   // 确认批量启用
   const confirmBatchEnable = async () => {
     try {
-      // 并发更新所有选中的角色
-      await Promise.all(
-        selectedIds.map(id => roleAPI.updateRoleStatus(id, 1))
-      );
+      // 使用批量API更新所有选中的角色状态
+      const count = selectedIds.length;
+      await roleAPI.batchUpdateRoleStatus(selectedIds, 1);
       setSelectedIds([]);
       // 刷新列表
       await fetchRoles();
 
       // 显示成功提示
-      toast.success(`成功启用 ${selectedIds.length} 个角色`, 3000);
+      toast.success(`成功启用 ${count} 个角色`, 3000);
       setShowBatchEnableConfirm(false);
     } catch (err) {
       console.error('批量更新角色状态失败:', err);
@@ -205,16 +204,15 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
   // 确认批量禁用
   const confirmBatchDisable = async () => {
     try {
-      // 并发更新所有选中的角色
-      await Promise.all(
-        selectedIds.map(id => roleAPI.updateRoleStatus(id, 0))
-      );
+      // 使用批量API更新所有选中的角色状态
+      const count = selectedIds.length;
+      await roleAPI.batchUpdateRoleStatus(selectedIds, 0);
       setSelectedIds([]);
       // 刷新列表
       await fetchRoles();
 
       // 显示成功提示
-      toast.success(`成功禁用 ${selectedIds.length} 个角色`, 3000);
+      toast.success(`成功禁用 ${count} 个角色`, 3000);
       setShowBatchDisableConfirm(false);
     } catch (err) {
       console.error('批量更新角色状态失败:', err);
@@ -306,7 +304,6 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
                     className="rounded border-gray-300 text-blue-500 focus:ring-blue-500"
                   />
                 </th>
-                <th className="p-4 font-medium">角色名称</th>
                 <th className="p-4 font-medium text-center">角色编码</th>
                 <th className="p-4 font-medium text-center">角色说明</th>
                 <th className="p-4 font-medium text-center">角色状态</th>
@@ -340,11 +337,6 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
                         className="rounded border-gray-300 text-blue-500 focus:ring-blue-500"
                       />
                     </td>
-                    <td className="p-4">
-                      <button onClick={() => onViewDetail(role)} className="hover:text-blue-500 transition-colors font-medium text-gray-700">
-                        {role.roleName}
-                      </button>
-                    </td>
                     <td className="p-4 text-center text-gray-600">{role.roleCode}</td>
                     <td className="p-4 text-center text-gray-600">{role.remark || '-'}</td>
                     <td className="p-4">
@@ -366,8 +358,7 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
                     <td className="p-4">
                       <div className="flex justify-center space-x-4">
                         <button onClick={() => openModal('editRole', role)} className="text-blue-500 hover:text-blue-700 text-sm">编辑</button>
-                        <button onClick={() => openModal('roleMember', role)} className="text-blue-500 hover:text-blue-700 text-sm">角色成员</button>
-                        <button onClick={() => openModal('rolePermission', role)} className="text-emerald-500 hover:text-emerald-700 text-sm">角色权限</button>
+                        <button onClick={() => openModal('rolePermission', role)} className="text-emerald-500 hover:text-emerald-700 text-sm">权限设置</button>
                         <button onClick={() => handleDelete(role)} className="text-red-500 hover:text-red-700 text-sm">删除</button>
                       </div>
                     </td>
