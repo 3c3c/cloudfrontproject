@@ -89,6 +89,8 @@ export async function apiRequest<T = any>(
 
     // 处理 401 未授权错误（token 过期）
     if (response.status === 401 && token) {
+      console.log('收到 401 响应，尝试刷新 token');
+
       // 尝试刷新 token
       try {
         const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
@@ -125,14 +127,17 @@ export async function apiRequest<T = any>(
             return retryData.data;
           }
         } else {
-          // 刷新失败，清除认证信息
+          // 刷新失败，清除认证信息并重定向
+          console.log('刷新 token 失败，清除认证信息并重定向到登录页');
           localStorage.removeItem('auth_token');
           localStorage.removeItem('auth_token_expire');
           localStorage.removeItem('auth_user');
           window.location.href = '/'; // 重定向到登录页
+          throw new Error('认证已过期，请重新登录');
         }
       } catch (refreshError) {
-        // 刷新过程出错，清除认证信息
+        // 刷新过程出错，清除认证信息并重定向
+        console.error('刷新 token 出错:', refreshError);
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_token_expire');
         localStorage.removeItem('auth_user');

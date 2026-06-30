@@ -1,10 +1,15 @@
 import { Role, User, Permission, Log } from './types';
 
 export const mockRoles: Role[] = Array.from({ length: 9 }).map((_, i) => ({
-  id: `role-${i + 1}`,
-  name: `角色${i + 1}`,
-  description: `角色说明${i + 1}`,
-  status: true,
+  id: i + 1,
+  roleCode: `ROLE_${i + 1}`,
+  roleName: `角色${i + 1}`,
+  remark: `角色说明${i + 1}`,
+  enabled: 1,
+  createTime: '2024-01-01T10:00:00',
+  updateTime: '2024-01-01T10:00:00',
+  createdBy: 'admin',
+  updatedBy: 'admin',
 }));
 
 export const mockUsers: User[] = Array.from({ length: 10 }).map((_, i) => ({

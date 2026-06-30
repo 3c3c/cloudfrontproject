@@ -19,11 +19,11 @@ import { ViewState, ModalState, Role, User, Permission } from './types';
 import { mockRoles, mockUsers, mockPermissions, mockLogs } from './data';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-// 内部主应用组件，使用认证上下文
 function MainApp() {
   const { isAuthenticated, user, logout, loading } = useAuth();
   const [viewState, setViewState] = useState<ViewState>({ type: 'roles' });
   const [modalState, setModalState] = useState<ModalState>({ type: 'none' });
+  const [refreshKey, setRefreshKey] = useState(0);
 
   if (loading) {
     return (
@@ -55,10 +55,15 @@ function MainApp() {
   };
 
   const handleCloseModal = () => {
+    const currentType = modalState.type;
     setModalState({ type: 'none' });
+
+    // 如果是角色相关的模态框关闭，刷新角色列表
+    if (['createRole', 'editRole', 'roleMember', 'rolePermission'].includes(currentType)) {
+      setRefreshKey(prev => prev + 1);
+    }
   };
 
-  // 构建当前用户对象
   const currentUser = user ? {
     id: user.id,
     account: user.username,
@@ -79,7 +84,7 @@ function MainApp() {
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
         {viewState.type === 'roles' && (
           <RoleList
-            roles={mockRoles}
+            refreshKey={refreshKey}
             onViewDetail={(role) => setViewState({ type: 'roleDetail', role })}
             openModal={handleOpenModal}
           />
@@ -118,7 +123,6 @@ function MainApp() {
         )}
       </main>
 
-      {/* Modals */}
       {modalState.type === 'createRole' && <CreateRoleModal onClose={handleCloseModal} />}
       {modalState.type === 'editRole' && <EditRoleModal onClose={handleCloseModal} role={modalState.role} />}
       {modalState.type === 'roleMember' && <RoleMemberModal onClose={handleCloseModal} role={modalState.role} />}
@@ -135,7 +139,6 @@ function MainApp() {
   );
 }
 
-// 导出应用组件，包装在认证提供者中
 export default function App() {
   return (
     <AuthProvider>

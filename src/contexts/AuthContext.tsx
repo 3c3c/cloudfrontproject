@@ -13,7 +13,10 @@ const TOKEN_REFRESH_ADVANCE = 5 * 60 * 1000;
 export interface AuthUser {
   id: string;
   username: string;
-  avatar?: string;
+  nickname: string;
+  mobile: string;
+  email: string | null;
+  avatar: string | null;
   authorities: string[];
   mustChangePassword: boolean;
 }
@@ -54,24 +57,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
           // 检查 token 是否过期
           if (expireTime > now) {
-            setToken(savedToken);
-            setUser(JSON.parse(savedUser));
-            setIsAuthenticated(true);
+            try {
+              const userData = JSON.parse(savedUser);
+              setToken(savedToken);
+              setUser(userData);
+              setIsAuthenticated(true);
 
-            // 设置定时器在过期前刷新 token
-            const refreshDelay = expireTime - now - TOKEN_REFRESH_ADVANCE;
-            if (refreshDelay > 0) {
-              setTimeout(() => {
+              // 设置定时器在过期前刷新 token
+              const refreshDelay = expireTime - now - TOKEN_REFRESH_ADVANCE;
+              if (refreshDelay > 0) {
+                setTimeout(() => {
+                  refreshToken(savedToken);
+                }, refreshDelay);
+              } else {
+                // 如果已经接近过期时间，立即刷新
                 refreshToken(savedToken);
-              }, refreshDelay);
-            } else {
-              // 如果已经接近过期时间，立即刷新
-              refreshToken(savedToken);
+              }
+            } catch (parseError) {
+              console.error('解析用户数据失败:', parseError);
+              clearAuthData();
             }
           } else {
             // Token 已过期，清理数据
+            console.log('Token 已过期，清理认证数据');
             clearAuthData();
           }
+        } else {
+          // 没有 token 数据，未认证状态
+          console.log('没有有效的 token 数据');
         }
       } catch (error) {
         console.error('加载认证状态失败:', error);
@@ -94,6 +107,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser({
         id: response.userId,
         username: response.username,
+        nickname: response.nickname,
+        mobile: response.mobile,
+        email: response.email,
         avatar: response.avatar,
         authorities: response.authorities,
         mustChangePassword: response.mustChangePassword,
@@ -106,6 +122,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       localStorage.setItem('auth_user', JSON.stringify({
         id: response.userId,
         username: response.username,
+        nickname: response.nickname,
+        mobile: response.mobile,
+        email: response.email,
         avatar: response.avatar,
         authorities: response.authorities,
         mustChangePassword: response.mustChangePassword,
@@ -144,6 +163,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser({
         id: response.userId,
         username: response.username,
+        nickname: response.nickname,
+        mobile: response.mobile,
+        email: response.email,
         avatar: response.avatar,
         authorities: response.authorities,
         mustChangePassword: response.mustChangePassword,
@@ -157,6 +179,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       localStorage.setItem('auth_user', JSON.stringify({
         id: response.userId,
         username: response.username,
+        nickname: response.nickname,
+        mobile: response.mobile,
+        email: response.email,
         avatar: response.avatar,
         authorities: response.authorities,
         mustChangePassword: response.mustChangePassword,

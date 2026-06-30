@@ -306,8 +306,8 @@ export function SelectRoleModal({ onClose, user }: { onClose: () => void; user?:
                 {mockRoles.map((role, i) => (
                   <tr key={role.id} className="hover:bg-gray-50 transition-colors">
                     <td className="p-3 text-center"><input type="checkbox" className="rounded border-gray-300 text-blue-500 focus:ring-blue-500 w-4 h-4 cursor-pointer" /></td>
-                    <td className="p-3 text-center text-gray-700">{role.name}</td>
-                    <td className="p-3 text-center text-gray-700">{role.description}</td>
+                    <td className="p-3 text-center text-gray-700">{role.roleName}</td>
+                    <td className="p-3 text-center text-gray-700">{role.remark}</td>
                   </tr>
                 ))}
               </tbody>

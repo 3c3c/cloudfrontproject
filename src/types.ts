@@ -1,8 +1,13 @@
 export interface Role {
-  id: string;
-  name: string;
-  description: string;
-  status: boolean;
+  id: number;
+  roleCode: string;
+  roleName: string;
+  remark: string;
+  enabled: number;
+  createTime: string;
+  updateTime: string;
+  createdBy: string;
+  updatedBy: string;
 }
 
 export interface User {

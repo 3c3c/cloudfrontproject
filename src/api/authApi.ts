@@ -26,7 +26,10 @@ export interface LoginResponse {
   tokenHead: string;
   userId: string;
   username: string;
-  avatar: string;
+  nickname: string;
+  mobile: string;
+  email: string | null;
+  avatar: string | null;
   authorities: string[];
   mustChangePassword: boolean;
 }

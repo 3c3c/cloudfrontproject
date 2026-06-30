@@ -1,3 +1,8 @@
+/**
+ * 角色详情组件
+ * 显示角色详细信息、成员和权限
+ */
+
 import { useState } from 'react';
 import { ArrowLeft, PlusSquare, Search, X, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Role } from '../types';
@@ -16,13 +21,13 @@ export function RoleDetail({ role, onBack, openModal }: RoleDetailProps) {
     <div className="flex-1 flex flex-col bg-white overflow-hidden h-full">
       <header className="px-8 pt-6 pb-4 shrink-0">
         <div className="text-xs text-gray-400 mb-3">
-          角色管理 / <span className="text-gray-500">{role.name}</span>
+          角色管理 / <span className="text-gray-500">{role.roleName}</span>
         </div>
         <div className="flex items-center text-xl font-bold text-gray-800">
           <button onClick={onBack} className="mr-3 text-gray-500 hover:text-blue-500 transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          {role.name}
+          {role.roleName}
         </div>
       </header>
 
@@ -35,18 +40,29 @@ export function RoleDetail({ role, onBack, openModal }: RoleDetailProps) {
         <div className="grid grid-cols-1 gap-y-4 text-sm max-w-2xl">
           <div className="flex items-center">
             <span className="w-24 text-gray-500">角色名称</span>
-            <span className="text-gray-800">{role.name}</span>
+            <span className="text-gray-800">{role.roleName}</span>
+          </div>
+          <div className="flex items-center">
+            <span className="w-24 text-gray-500">角色编码</span>
+            <span className="text-gray-800">{role.roleCode}</span>
           </div>
           <div className="flex items-center">
             <span className="w-24 text-gray-500">角色说明</span>
-            <span className="text-gray-800">{role.description}</span>
+            <span className="text-gray-800">{role.remark || '-'}</span>
           </div>
           <div className="flex items-center">
             <span className="w-24 text-gray-500">角色状态</span>
             <div className="flex items-center">
-              <span className="text-blue-500 mr-3 text-sm">启用</span>
+              <span className={`${role.enabled === 1 ? 'text-blue-500' : 'text-gray-400'} mr-3 text-sm`}>
+                {role.enabled === 1 ? '启用' : '禁用'}
+              </span>
               <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" defaultChecked={role.status} className="sr-only peer" />
+                <input
+                  type="checkbox"
+                  checked={role.enabled === 1}
+                  disabled
+                  className="sr-only peer"
+                />
                 <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
               </label>
             </div>
@@ -56,13 +72,13 @@ export function RoleDetail({ role, onBack, openModal }: RoleDetailProps) {
 
       <section className="px-8 mt-2 shrink-0">
         <div className="flex border-b border-gray-200">
-          <button 
+          <button
             onClick={() => setActiveTab('users')}
             className={`px-8 py-2.5 text-sm font-medium transition-colors rounded-t-md ${activeTab === 'users' ? 'bg-blue-500 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border-r border-t border-gray-200'}`}
           >
             用户管理
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('permissions')}
             className={`px-8 py-2.5 text-sm font-medium transition-colors rounded-t-md ${activeTab === 'permissions' ? 'bg-blue-500 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border-r border-t border-gray-200'}`}
           >
@@ -73,17 +89,17 @@ export function RoleDetail({ role, onBack, openModal }: RoleDetailProps) {
 
       <section className="px-8 py-4 flex items-center justify-between shrink-0">
         <div className="flex items-center space-x-4">
-          <button 
+          <button
             onClick={() => openModal(activeTab === 'users' ? 'roleMember' : 'rolePermission', role)}
             className="flex items-center px-4 py-2 bg-blue-500 text-white rounded shadow-sm hover:bg-blue-600 transition-colors text-sm"
           >
             <PlusSquare className="w-4 h-4 mr-2" />
-            添加成员
+            {activeTab === 'users' ? '添加成员' : '添加权限'}
           </button>
           <div className="relative">
-            <input 
-              type="text" 
-              placeholder="请输入用户名称或账号" 
+            <input
+              type="text"
+              placeholder={activeTab === 'users' ? '请输入用户名称或账号' : '请输入权限名称'}
               className="w-64 pl-4 pr-10 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center text-gray-400 space-x-1">
@@ -102,21 +118,33 @@ export function RoleDetail({ role, onBack, openModal }: RoleDetailProps) {
         <table className="w-full text-left text-sm border-collapse">
           <thead className="bg-gray-50 text-gray-500 sticky top-0 z-10">
             <tr>
-              <th className="px-6 py-3 font-medium border-b border-gray-200 w-1/3">用户账号</th>
-              <th className="px-6 py-3 font-medium border-b border-gray-200 w-1/3">用户名称</th>
+              <th className="px-6 py-3 font-medium border-b border-gray-200 w-1/3">
+                {activeTab === 'users' ? '用户账号' : '权限名称'}
+              </th>
+              <th className="px-6 py-3 font-medium border-b border-gray-200 w-1/3">
+                {activeTab === 'users' ? '用户名称' : '权限说明'}
+              </th>
               <th className="px-6 py-3 font-medium border-b border-gray-200">操作</th>
             </tr>
           </thead>
           <tbody className="text-gray-700">
-            {mockUsers.map((u, i) => (
-              <tr key={u.id} className={`transition-colors ${i === 0 ? 'bg-blue-50/50' : 'hover:bg-gray-50'}`}>
-                <td className="px-6 py-3.5 border-b border-gray-100">{u.account}</td>
-                <td className="px-6 py-3.5 border-b border-gray-100">{u.name}</td>
-                <td className="px-6 py-3.5 border-b border-gray-100">
-                  <button className="text-red-500 hover:text-red-600 transition-colors text-sm">移除用户</button>
+            {activeTab === 'users' ? (
+              mockUsers.map((u, i) => (
+                <tr key={u.id} className={`transition-colors ${i === 0 ? 'bg-blue-50/50' : 'hover:bg-gray-50'}`}>
+                  <td className="px-6 py-3.5 border-b border-gray-100">{u.account}</td>
+                  <td className="px-6 py-3.5 border-b border-gray-100">{u.name}</td>
+                  <td className="px-6 py-3.5 border-b border-gray-100">
+                    <button className="text-red-500 hover:text-red-600 transition-colors text-sm">移除用户</button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
+                  暂无权限数据
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </section>

@@ -128,8 +128,8 @@ export function UserDetail({ user, onBack, openModal }: UserDetailProps) {
           <tbody className="text-gray-700">
             {mockRoles.map((r, i) => (
               <tr key={r.id} className={`transition-colors ${i === 0 ? 'bg-blue-50/50' : 'hover:bg-gray-50'}`}>
-                <td className="px-6 py-3.5 border-b border-gray-100">{r.name}</td>
-                <td className="px-6 py-3.5 border-b border-gray-100">{r.description}</td>
+                <td className="px-6 py-3.5 border-b border-gray-100">{r.roleName}</td>
+                <td className="px-6 py-3.5 border-b border-gray-100">{r.remark}</td>
                 <td className="px-6 py-3.5 border-b border-gray-100">
                   <button className="text-red-500 hover:text-red-600 transition-colors text-sm">移除用户</button>
                 </td>
