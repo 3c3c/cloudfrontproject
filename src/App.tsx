@@ -59,7 +59,7 @@ function MainApp() {
     setModalState({ type: 'none' });
 
     // 只有在明确需要刷新时才刷新列表（如创建、编辑成功后）
-    if (shouldRefresh && ['createRole', 'editRole', 'roleMember', 'rolePermission'].includes(currentType)) {
+    if (shouldRefresh && ['createRole', 'editRole', 'roleMember', 'rolePermission', 'createUser', 'editUser', 'selectRole', 'userPermission', 'resetPassword'].includes(currentType)) {
       setRefreshKey(prev => prev + 1);
     }
   };
@@ -100,7 +100,7 @@ function MainApp() {
 
         {viewState.type === 'users' && (
           <UserList
-            users={mockUsers}
+            refreshKey={refreshKey}
             onViewDetail={(user) => setViewState({ type: 'userDetail', user })}
             openModal={handleOpenModal}
           />

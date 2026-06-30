@@ -373,19 +373,22 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
           <div className="flex space-x-3">
             <button
               onClick={() => handleBatchUpdateStatus(1)}
-              className="bg-blue-500 text-white hover:bg-blue-600 px-4 py-2 rounded text-sm transition-colors flex items-center shadow-sm"
+              disabled={selectedIds.length === 0}
+              className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed px-4 py-2 rounded text-sm transition-colors flex items-center shadow-sm"
             >
               <CheckCircle2 className="w-4 h-4 mr-1 opacity-70" /> 批量启用
             </button>
             <button
               onClick={() => handleBatchUpdateStatus(0)}
-              className="bg-orange-400 text-white hover:bg-orange-500 px-4 py-2 rounded text-sm transition-colors flex items-center shadow-sm"
+              disabled={selectedIds.length === 0}
+              className="bg-orange-400 text-white hover:bg-orange-500 disabled:bg-gray-300 disabled:cursor-not-allowed px-4 py-2 rounded text-sm transition-colors flex items-center shadow-sm"
             >
               <Ban className="w-4 h-4 mr-1 opacity-70" /> 批量禁用
             </button>
             <button
               onClick={handleBatchDelete}
-              className="bg-red-500 text-white hover:bg-red-600 px-4 py-2 rounded text-sm transition-colors flex items-center shadow-sm"
+              disabled={selectedIds.length === 0}
+              className="bg-red-500 text-white hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed px-4 py-2 rounded text-sm transition-colors flex items-center shadow-sm"
             >
               <Trash2 className="w-4 h-4 mr-1 opacity-70" /> 批量删除
             </button>

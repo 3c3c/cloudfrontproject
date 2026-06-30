@@ -11,7 +11,7 @@ export interface Role {
 }
 
 export interface User {
-  id: string;
+  id: number;
   account: string;
   username?: string;
   name: string;
@@ -23,6 +23,10 @@ export interface User {
   avatar?: string;
   authorities?: string[];
   mustChangePassword?: boolean;
+  createTime?: string;
+  updateTime?: string;
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 export interface AuthUser {

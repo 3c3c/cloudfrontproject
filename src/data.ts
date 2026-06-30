@@ -13,7 +13,7 @@ export const mockRoles: Role[] = Array.from({ length: 9 }).map((_, i) => ({
 }));
 
 export const mockUsers: User[] = Array.from({ length: 10 }).map((_, i) => ({
-  id: `user-${i + 1}`,
+  id: i + 1,
   account: `1000000000${i + 1}`.slice(-11),
   name: ['刘一', '陈二', '张三', '李四', '王五', '赵六', '孙七', '周八', '吴九', '郑十'][i],
   status: true,

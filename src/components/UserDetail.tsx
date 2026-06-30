@@ -30,8 +30,7 @@ export function UserDetail({ user, onBack, openModal }: UserDetailProps) {
         <div className="flex items-center mb-6">
           <h2 className="font-bold text-base mr-6 text-gray-800">用户基本信息</h2>
           <button onClick={() => openModal('editUser', user)} className="text-blue-500 text-sm mr-6 hover:underline">编辑基本信息</button>
-          <button onClick={() => openModal('resetPassword', user)} className="text-orange-500 text-sm mr-6 hover:underline">重置密码</button>
-          <button className="text-red-500 text-sm hover:underline">删除该角色</button>
+          <button onClick={() => openModal('resetPassword', user)} className="text-orange-500 text-sm hover:underline">重置密码</button>
         </div>
         <div className="flex gap-x-12">
           <div className="shrink-0">
