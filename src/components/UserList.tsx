@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Plus, Search, RefreshCw, X, CheckCircle2, Ban, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { User } from '../types';
 import { userAPI } from '../api/userApi';
+import { toast } from '../utils/toastHelpers';
+import { ConfirmModal } from './ConfirmModal';
 
 interface UserListProps {
   refreshKey?: number;
@@ -18,6 +20,9 @@ export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps)
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
+  const [showBatchEnableConfirm, setShowBatchEnableConfirm] = useState(false);
+  const [showBatchDisableConfirm, setShowBatchDisableConfirm] = useState(false);
 
   // 加载用户列表
   const loadUsers = async () => {
@@ -108,9 +113,14 @@ export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps)
           u.id === user.id ? { ...u, status: !u.status } : u
         )
       );
+
+      // 显示成功提示
+      const statusText = newStatus === 1 ? '启用' : '禁用';
+      toast.success(`用户"${user.name}"已${statusText}`, 2000);
     } catch (error) {
       console.error('更新用户状态失败:', error);
-      // 可以在这里添加错误提示
+      const errorMessage = error instanceof Error ? error.message : '更新用户状态失败';
+      toast.error(errorMessage, 5000);
     }
   };
 
@@ -126,19 +136,28 @@ export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps)
       // 只更新本地状态，不重新加载列表
       setUsers(prevUsers => prevUsers.filter(u => u.id !== userId));
       setTotal(prev => prev - 1);
+
+      // 显示成功提示
+      toast.success('用户删除成功', 2000);
     } catch (error) {
       console.error('删除用户失败:', error);
-      // 可以在这里添加错误提示
+      const errorMessage = error instanceof Error ? error.message : '删除用户失败';
+      toast.error(errorMessage, 5000);
     }
   };
 
   // 批量启用用户
   const handleBatchEnable = async () => {
     if (selectedUsers.size === 0) {
-      alert('请先选择要操作的用户');
+      toast.warning('请先选择要操作的用户', 3000);
       return;
     }
 
+    setShowBatchEnableConfirm(true);
+  };
+
+  // 确认批量启用用户
+  const confirmBatchEnable = async () => {
     try {
       await userAPI.batchUpdateUserStatus(Array.from(selectedUsers), 1);
 
@@ -149,19 +168,27 @@ export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps)
         )
       );
       setSelectedUsers(new Set());
+      setShowBatchEnableConfirm(false);
     } catch (error) {
       console.error('批量启用失败:', error);
-      // 可以在这里添加错误提示
+      const errorMessage = error instanceof Error ? error.message : '批量启用失败';
+      toast.error(errorMessage, 5000);
+      setShowBatchEnableConfirm(false);
     }
   };
 
   // 批量禁用用户
   const handleBatchDisable = async () => {
     if (selectedUsers.size === 0) {
-      alert('请先选择要操作的用户');
+      toast.warning('请先选择要操作的用户', 3000);
       return;
     }
 
+    setShowBatchDisableConfirm(true);
+  };
+
+  // 确认批量禁用用户
+  const confirmBatchDisable = async () => {
     try {
       await userAPI.batchUpdateUserStatus(Array.from(selectedUsers), 0);
 
@@ -172,33 +199,44 @@ export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps)
         )
       );
       setSelectedUsers(new Set());
+      setShowBatchDisableConfirm(false);
     } catch (error) {
       console.error('批量禁用失败:', error);
-      // 可以在这里添加错误提示
+      const errorMessage = error instanceof Error ? error.message : '批量禁用失败';
+      toast.error(errorMessage, 5000);
+      setShowBatchDisableConfirm(false);
     }
   };
 
   // 批量删除用户
   const handleBatchDelete = async () => {
     if (selectedUsers.size === 0) {
-      alert('请先选择要操作的用户');
+      toast.warning('请先选择要操作的用户', 3000);
       return;
     }
 
-    if (!confirm(`确定要删除选中的 ${selectedUsers.size} 个用户吗？`)) {
-      return;
-    }
+    setShowBatchDeleteConfirm(true);
+  };
 
+  // 确认批量删除用户
+  const confirmBatchDelete = async () => {
     try {
+      const count = selectedUsers.size;
       await userAPI.batchDeleteUsers(Array.from(selectedUsers));
 
       // 只更新本地状态，不重新加载列表
       setUsers(prevUsers => prevUsers.filter(u => !selectedUsers.has(u.id)));
       setSelectedUsers(new Set());
-      setTotal(prev => prev - selectedUsers.size);
+      setTotal(prev => prev - count);
+
+      // 显示成功提示
+      toast.success(`成功删除 ${count} 个用户`, 3000);
+      setShowBatchDeleteConfirm(false);
     } catch (error) {
       console.error('批量删除失败:', error);
-      // 可以在这里添加错误提示
+      const errorMessage = error instanceof Error ? error.message : '批量删除失败';
+      toast.error(errorMessage, 5000);
+      setShowBatchDeleteConfirm(false);
     }
   };
 
@@ -206,6 +244,8 @@ export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps)
   const handlePageChange = (page: number) => {
     if (page < 1 || page > totalPages) return;
     setCurrentPage(page);
+    // 切换页面时清除选中状态
+    setSelectedUsers(new Set());
   };
 
   // 初始加载、搜索变化和refreshKey变化时重新加载
@@ -448,6 +488,42 @@ export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps)
           </div>
         </div>
       </div>
+
+      {/* 批量删除确认弹框 */}
+      <ConfirmModal
+        isOpen={showBatchDeleteConfirm}
+        title="批量删除用户"
+        message={`确定要删除选中的 ${selectedUsers.size} 个用户吗？`}
+        type="danger"
+        confirmText="删除"
+        cancelText="取消"
+        onConfirm={confirmBatchDelete}
+        onCancel={() => setShowBatchDeleteConfirm(false)}
+      />
+
+      {/* 批量启用确认弹框 */}
+      <ConfirmModal
+        isOpen={showBatchEnableConfirm}
+        title="批量启用用户"
+        message={`确定要启用选中的 ${selectedUsers.size} 个用户吗？`}
+        type="success"
+        confirmText="启用"
+        cancelText="取消"
+        onConfirm={confirmBatchEnable}
+        onCancel={() => setShowBatchEnableConfirm(false)}
+      />
+
+      {/* 批量禁用确认弹框 */}
+      <ConfirmModal
+        isOpen={showBatchDisableConfirm}
+        title="批量禁用用户"
+        message={`确定要禁用选中的 ${selectedUsers.size} 个用户吗？`}
+        type="warning"
+        confirmText="禁用"
+        cancelText="取消"
+        onConfirm={confirmBatchDisable}
+        onCancel={() => setShowBatchDisableConfirm(false)}
+      />
     </div>
   );
 }

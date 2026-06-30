@@ -246,6 +246,13 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
     pageNumbers.push(i);
   }
 
+  // 处理翻页
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // 切换页面时清除选中状态
+    setSelectedIds([]);
+  };
+
   return (
     <div className="flex-1 flex flex-col p-8 overflow-hidden">
       <div className="flex items-center mb-6 shrink-0">
@@ -396,7 +403,7 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
 
           <div className="flex space-x-1 items-center">
             <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
               className="p-1 border border-gray-300 rounded text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -405,7 +412,7 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
             {pageNumbers.map(page => (
               <button
                 key={page}
-                onClick={() => setCurrentPage(page)}
+                onClick={() => handlePageChange(page)}
                 className={`px-3 py-1 rounded text-sm transition-colors ${
                   currentPage === page
                     ? 'bg-blue-500 text-white'
@@ -416,7 +423,7 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
               </button>
             ))}
             <button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages || totalPages === 0}
               className="p-1 border border-gray-300 rounded text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >

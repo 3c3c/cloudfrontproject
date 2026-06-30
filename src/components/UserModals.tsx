@@ -3,7 +3,7 @@ import { X, Search, Upload, Eye, EyeOff } from 'lucide-react';
 import { mockRoles, mockPermissions } from '../data';
 import { userAPI } from '../api/userApi';
 import { encryptPassword } from '../utils/crypto';
-import { ConfirmModal } from './ConfirmModal';
+import { toast } from '../utils/toastHelpers';
 
 interface CreateUserModalProps {
   onClose: (shouldRefresh?: boolean) => void;
@@ -48,8 +48,6 @@ export function CreateUserModal({ onClose }: CreateUserModalProps) {
     email: '',
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 验证用户账号
@@ -147,8 +145,7 @@ export function CreateUserModal({ onClose }: CreateUserModalProps) {
 
     // 如果有错误，阻止提交
     if (usernameError || nicknameError || mobileError || emailError) {
-      setErrorMessage('请修正表单中的错误');
-      setShowErrorModal(true);
+      toast.error('请修正表单中的错误', 3000);
       return;
     }
 
@@ -175,8 +172,7 @@ export function CreateUserModal({ onClose }: CreateUserModalProps) {
 
       onClose(true); // 关闭弹窗并刷新列表
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : '创建用户失败');
-      setShowErrorModal(true);
+      toast.error(err instanceof Error ? err.message : '创建用户失败', 5000);
     } finally {
       setLoading(false);
     }
@@ -370,18 +366,6 @@ export function CreateUserModal({ onClose }: CreateUserModalProps) {
           </button>
         </div>
       </div>
-
-      {/* 错误提示弹框 */}
-      <ConfirmModal
-        isOpen={showErrorModal}
-        title="提示"
-        message={errorMessage}
-        type="info"
-        confirmText="知道了"
-        cancelText="取消"
-        onConfirm={() => setShowErrorModal(false)}
-        onCancel={() => setShowErrorModal(false)}
-      />
     </div>
   );
 }
@@ -389,15 +373,12 @@ export function CreateUserModal({ onClose }: CreateUserModalProps) {
 export function EditUserModal({ onClose, user }: EditUserModalProps) {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(user.avatar || null);
   const [formData, setFormData] = useState({
-    username: user.account,
     nickname: user.name,
     mobile: user.mobile || user.phone || '',
     email: user.email || '',
     avatar: user.avatar || '',
   });
   const [loading, setLoading] = useState(false);
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAvatarChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -413,41 +394,27 @@ export function EditUserModal({ onClose, user }: EditUserModalProps) {
     e.preventDefault();
 
     // 表单验证
-    if (!formData.username.trim()) {
-      setErrorMessage('用户账号不能为空');
-      setShowErrorModal(true);
-      return;
-    }
-    if (formData.username.length > 64) {
-      setErrorMessage('用户账号最大长度64个字符');
-      setShowErrorModal(true);
-      return;
-    }
     if (!formData.nickname.trim()) {
-      setErrorMessage('用户名称不能为空');
-      setShowErrorModal(true);
+      toast.error('用户名称不能为空', 3000);
       return;
     }
     if (formData.nickname.length > 64) {
-      setErrorMessage('用户名称最大长度64个字符');
-      setShowErrorModal(true);
+      toast.error('用户名称最大长度64个字符', 3000);
       return;
     }
     if (formData.mobile && !/^1\d{10}$/.test(formData.mobile)) {
-      setErrorMessage('手机号码格式不正确');
-      setShowErrorModal(true);
+      toast.error('手机号码格式不正确', 3000);
       return;
     }
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      setErrorMessage('电子邮箱格式不正确');
-      setShowErrorModal(true);
+      toast.error('电子邮箱格式不正确', 3000);
       return;
     }
 
     setLoading(true);
     try {
       await userAPI.updateUser(user.id, {
-        username: formData.username,
+        username: user.account, // 使用原始账号，不允许修改
         nickname: formData.nickname,
         mobile: formData.mobile || undefined,
         email: formData.email || undefined,
@@ -456,8 +423,7 @@ export function EditUserModal({ onClose, user }: EditUserModalProps) {
 
       onClose(true); // 关闭弹窗并刷新列表
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : '更新用户失败');
-      setShowErrorModal(true);
+      toast.error(err instanceof Error ? err.message : '更新用户失败', 5000);
     } finally {
       setLoading(false);
     }
@@ -467,7 +433,7 @@ export function EditUserModal({ onClose, user }: EditUserModalProps) {
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white w-full max-w-[680px] rounded-sm shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-lg font-medium text-gray-800">编辑用户基本信息</h2>
+          <h2 className="text-lg font-medium text-gray-800">编辑用户</h2>
           <button onClick={() => onClose()} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X className="w-5 h-5" />
           </button>
@@ -494,23 +460,6 @@ export function EditUserModal({ onClose, user }: EditUserModalProps) {
                 className="hidden"
                 accept="image/*"
               />
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <label className="block mb-2 text-sm font-normal text-gray-700">
-              <span className="text-red-500 mr-1">*</span>用户账号
-            </label>
-            <input
-              type="text"
-              value={formData.username}
-              onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
-              className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all"
-              maxLength={64}
-            />
-            <div className="flex justify-between mt-1.5">
-              <span className="text-xs text-gray-400">最大长度64个字符，允许英文字母、数字或特殊符号</span>
-              <span className="text-xs text-gray-400">{formData.username.length}/64</span>
             </div>
           </div>
 
@@ -582,18 +531,6 @@ export function EditUserModal({ onClose, user }: EditUserModalProps) {
           </button>
         </div>
       </div>
-
-      {/* 错误提示弹框 */}
-      <ConfirmModal
-        isOpen={showErrorModal}
-        title="提示"
-        message={errorMessage}
-        type="info"
-        confirmText="知道了"
-        cancelText="取消"
-        onConfirm={() => setShowErrorModal(false)}
-        onCancel={() => setShowErrorModal(false)}
-      />
     </div>
   );
 }
@@ -619,13 +556,13 @@ export function SelectRoleModal({ onClose, user }: SelectRoleModalProps) {
 
           <div className="mb-6">
             <label className="block mb-2 text-sm font-normal text-gray-700">
-              <span className="text-red-500 mr-1">*</span>角色名称
+              <span className="text-red-500 mr-1">*</span>用户账号
             </label>
             <input
               type="text"
               disabled
-              value={user?.name || ''}
-              placeholder="角色名称"
+              value={user?.account || ''}
+              placeholder="用户账号"
               className="w-full border border-gray-200 bg-gray-50 rounded-sm px-3 py-2 text-sm text-gray-500 cursor-not-allowed"
             />
           </div>
