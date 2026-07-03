@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus, Search, RefreshCw, CheckCircle2, Ban, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { User } from '../types';
 import { userAPI } from '../api/userApi';
@@ -25,6 +25,10 @@ export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps)
   const [showBatchDisableConfirm, setShowBatchDisableConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  // 搜索提交计数器（输入时不触发请求，仅点击搜索 / 回车时 +1 触发）
+  const [searchNonce, setSearchNonce] = useState(0);
+  // 上次请求参数签名，用于规避 React StrictMode 开发模式下的重复挂载请求
+  const lastFetchKey = useRef<string | null>(null);
 
   // 加载用户列表
   const loadUsers = async () => {
@@ -68,7 +72,7 @@ export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps)
   // 搜索用户
   const handleSearch = () => {
     setCurrentPage(1);
-    loadUsers();
+    setSearchNonce((n) => n + 1);
   };
 
   // 刷新列表
@@ -250,10 +254,14 @@ export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps)
     setSelectedUsers(new Set());
   };
 
-  // 初始加载、搜索变化和refreshKey变化时重新加载
+  // 初始加载 / 翻页 / 搜索 / refreshKey 变化时重新加载
+  // 用参数签名去重，规避 React StrictMode 开发模式下的重复挂载请求
   useEffect(() => {
+    const key = `p${currentPage}:k${keyword}:n${searchNonce}:r${refreshKey ?? 0}`;
+    if (lastFetchKey.current === key) return;
+    lastFetchKey.current = key;
     loadUsers();
-  }, [currentPage, refreshKey]);
+  }, [currentPage, searchNonce, refreshKey]);
 
   // 检查是否全选
   const isAllSelected = users.length > 0 && selectedUsers.size === users.length;

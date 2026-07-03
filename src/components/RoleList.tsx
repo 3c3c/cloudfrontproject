@@ -37,8 +37,10 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
   const [pendingDeleteRole, setPendingDeleteRole] = useState<Role | null>(null);
   const [noSelectionAlert, setNoSelectionAlert] = useState(false);
 
-  // 使用 ref 来防止 StrictMode 双重调用
-  const isInitialized = useRef(false);
+  // 搜索提交计数器（输入时不触发请求，仅点击搜索 / 回车时 +1 触发）
+  const [searchNonce, setSearchNonce] = useState(0);
+  // 上次请求参数签名，用于规避 React StrictMode 开发模式下的重复挂载请求
+  const lastFetchKey = useRef<string | null>(null);
 
   // 获取角色列表
   const fetchRoles = useCallback(async () => {
@@ -61,35 +63,26 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
     }
   }, [currentPage, pageSize]);
 
-  // 初始化加载
+  // 初始加载 / 翻页 / 搜索 / refreshKey 变化时获取数据
+  // 用参数签名去重，规避 React StrictMode 开发模式下的重复挂载请求
   useEffect(() => {
-    // 防止 React StrictMode 导致的双重调用
-    if (isInitialized.current) {
-      return;
-    }
-    isInitialized.current = true;
+    const key = `p${currentPage}:k${searchKeywordRef.current}:n${searchNonce}:r${refreshKey ?? 0}`;
+    if (lastFetchKey.current === key) return;
+    lastFetchKey.current = key;
     fetchRoles();
-  }, [fetchRoles]);
-
-  // 当 refreshKey 变化时，重新获取数据
-  useEffect(() => {
-    if (isInitialized.current && refreshKey !== undefined) {
-      console.log('refreshKey 变化，重新获取角色列表:', refreshKey);
-      fetchRoles();
-    }
-  }, [refreshKey, fetchRoles]);
+  }, [currentPage, searchNonce, refreshKey, fetchRoles]);
 
   // 搜索处理
   const handleSearch = () => {
     setCurrentPage(1);
-    // 立即触发搜索
-    fetchRoles();
+    setSearchNonce((n) => n + 1);
   };
 
   // 清空搜索
   const handleClearSearch = () => {
     setSearchKeyword('');
     setCurrentPage(1);
+    setSearchNonce((n) => n + 1);
   };
 
   // 刷新列表

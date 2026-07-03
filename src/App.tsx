@@ -14,6 +14,7 @@ import { LogList } from './components/LogList';
 import { CreateRoleModal, EditRoleModal, RoleMemberModal, RolePermissionModal } from './components/RoleModals';
 import { CreateUserModal, EditUserModal, SelectRoleModal, UserPermissionModal, ResetPasswordModal } from './components/UserModals';
 import { PermissionModal } from './components/PermissionModals';
+import { DictionaryManagement } from './components/DictionaryManagement';
 import { Auth } from './components/Auth';
 import { ViewState, ModalState, Role, User, Permission } from './types';
 import { mockRoles, mockUsers, mockPermissions, mockLogs } from './data';
@@ -121,6 +122,10 @@ function MainApp() {
 
         {viewState.type === 'logs' && (
           <LogList logs={mockLogs} />
+        )}
+
+        {viewState.type === 'dictionaries' && (
+          <DictionaryManagement />
         )}
       </main>
 

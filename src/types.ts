@@ -53,13 +53,33 @@ export interface Log {
   status: 'success' | 'fail';
 }
 
+export interface DictionaryType {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  parentId: string | null;
+  enabled: boolean;
+  sortOrder?: number;
+}
+
+export interface DictionaryItem {
+  id: string;
+  typeId: string;
+  label: string;
+  value: string;
+  sortOrder: number;
+  description?: string;
+}
+
 export type ViewState =
   | { type: 'roles' }
   | { type: 'roleDetail'; role: Role }
   | { type: 'users' }
   | { type: 'userDetail'; user: User }
   | { type: 'permissions' }
-  | { type: 'logs' };
+  | { type: 'logs' }
+  | { type: 'dictionaries' };
 
 export type ModalState = 
   | { type: 'none' }

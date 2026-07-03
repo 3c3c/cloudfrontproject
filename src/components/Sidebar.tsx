@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ShieldCheck, Users, Key, ChevronDown, Menu, LogOut, FolderLock, Settings, ScrollText } from 'lucide-react';
+import { ShieldCheck, Users, Key, ChevronDown, Menu, LogOut, FolderLock, Settings, ScrollText, Bell, BookText } from 'lucide-react';
 import { User } from '../types';
 
 interface SidebarProps {
@@ -13,6 +13,8 @@ export function Sidebar({ currentNav = 'roles', onNavChange, onLogout, currentUs
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  // TODO: 替换为真实未读消息数量
+  const unreadCount = 5;
 
   return (
     <aside className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-gray-200 flex-shrink-0 flex flex-col h-full z-10 relative transition-all duration-300 ease-in-out`}>
@@ -30,7 +32,7 @@ export function Sidebar({ currentNav = 'roles', onNavChange, onLogout, currentUs
         <div className="relative group/parent">
           <button 
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className={`w-full flex items-center ${isSidebarOpen ? 'justify-between px-6 py-2' : 'justify-center flex-col py-2.5 px-1'} text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 hover:bg-gray-50 transition-colors cursor-pointer`}
+            className={`w-full flex items-center ${isSidebarOpen ? 'justify-between px-6 py-2' : 'justify-center flex-col py-2.5 px-1'} text-base font-semibold text-gray-500 uppercase tracking-wider mb-2 hover:bg-gray-50 transition-colors cursor-pointer`}
             title={!isSidebarOpen ? "权限管理" : ""}
           >
             {isSidebarOpen ? (
@@ -117,7 +119,7 @@ export function Sidebar({ currentNav = 'roles', onNavChange, onLogout, currentUs
         <div className="relative group/system">
           <button
             onClick={() => setIsSystemMenuOpen(!isSystemMenuOpen)}
-            className={`w-full flex items-center ${isSidebarOpen ? 'justify-between px-6 py-2' : 'justify-center flex-col py-2.5 px-1'} text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 hover:bg-gray-50 transition-colors cursor-pointer`}
+            className={`w-full flex items-center ${isSidebarOpen ? 'justify-between px-6 py-2' : 'justify-center flex-col py-2.5 px-1'} text-base font-semibold text-gray-500 uppercase tracking-wider mb-2 hover:bg-gray-50 transition-colors cursor-pointer`}
             title={!isSidebarOpen ? "系统管理" : ""}
           >
             {isSidebarOpen ? (
@@ -149,6 +151,12 @@ export function Sidebar({ currentNav = 'roles', onNavChange, onLogout, currentUs
                     <span>日志管理</span>
                   </a>
                 </li>
+                <li>
+                  <a href="#" onClick={(e) => { e.preventDefault(); onNavChange?.('dictionaries'); }} className={`flex items-center px-3 py-2.5 rounded-md text-sm transition-colors ${currentNav === 'dictionaries' ? 'bg-blue-50 text-blue-500 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}>
+                    <BookText className="w-4 h-4 mr-2.5 shrink-0" />
+                    <span>字典管理</span>
+                  </a>
+                </li>
               </ul>
             </div>
           )}
@@ -166,18 +174,39 @@ export function Sidebar({ currentNav = 'roles', onNavChange, onLogout, currentUs
                 )}
               </a>
             </li>
+            <li>
+              <a href="#" onClick={(e) => { e.preventDefault(); onNavChange?.('dictionaries'); }} className={`flex items-center ${isSidebarOpen ? 'px-6 py-3' : 'justify-center flex-col py-2.5 px-1'} transition-colors relative ${currentNav === 'dictionaries' ? 'bg-blue-50 text-blue-500 border-r-4 border-blue-500 font-medium' : 'text-gray-600 hover:bg-gray-50'}`} title={!isSidebarOpen ? "字典管理" : ""}>
+                <BookText className={`w-5 h-5 ${isSidebarOpen ? 'mr-3' : 'mb-1'} shrink-0`} />
+                {isSidebarOpen ? (
+                  <span className="whitespace-nowrap">字典管理</span>
+                ) : (
+                  <span className="text-[10px] scale-90 tracking-tighter text-center truncate max-w-[72px]">字典管理</span>
+                )}
+              </a>
+            </li>
           </ul>
         </div>
       </nav>
       <div className="border-t border-gray-100 p-4">
         <div className={`flex items-center ${isSidebarOpen ? 'justify-between px-2' : 'flex-col-reverse gap-4'}`}>
-          <button 
+          <button
             onClick={onLogout}
             className={`flex items-center text-red-600 hover:bg-red-50 p-2 rounded-md transition-colors`}
             title="退出登录"
           >
             <LogOut className={`w-5 h-5 ${isSidebarOpen ? 'mr-2' : ''} shrink-0`} />
             {isSidebarOpen && <span className="whitespace-nowrap font-medium text-sm">退出登录</span>}
+          </button>
+          <button
+            className="relative text-gray-500 hover:text-gray-700 hover:bg-gray-100 p-2 rounded-md transition-colors"
+            title="消息通知"
+          >
+            <Bell className="w-5 h-5 shrink-0" />
+            {unreadCount > 0 && (
+              <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-semibold rounded-full flex items-center justify-center leading-none ring-2 ring-white">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </button>
           <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-500 font-semibold border border-blue-200 shrink-0 overflow-hidden" title="当前用户">
             {currentUser?.avatar ? (
