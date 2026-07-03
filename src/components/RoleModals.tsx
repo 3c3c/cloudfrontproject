@@ -32,7 +32,6 @@ function ModalWrapper({ children, title, onClose, widthClass = "max-w-[680px]" }
 
 export function CreateRoleModal({ onClose }: BaseModalProps) {
   const [roleCode, setRoleCode] = useState('');
-  const [roleName, setRoleName] = useState('');
   const [remark, setRemark] = useState('');
   const [enabled, setEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -47,16 +46,8 @@ export function CreateRoleModal({ onClose }: BaseModalProps) {
       setError('角色编码不能为空');
       return;
     }
-    if (!roleName.trim()) {
-      setError('角色名称不能为空');
-      return;
-    }
     if (roleCode.length > 50) {
       setError('角色编码最大长度为50个字符');
-      return;
-    }
-    if (roleName.length > 50) {
-      setError('角色名称最大长度为50个字符');
       return;
     }
     if (remark.length > 200) {
@@ -68,7 +59,6 @@ export function CreateRoleModal({ onClose }: BaseModalProps) {
       setLoading(true);
       await roleAPI.createRole({
         roleCode,
-        roleName,
         remark,
         enabled: enabled ? 1 : 0,
       });
@@ -108,24 +98,6 @@ export function CreateRoleModal({ onClose }: BaseModalProps) {
             <div className="flex justify-between mt-1.5">
               <span className="text-xs text-gray-400">最大长度50个字符</span>
               <span className="text-xs text-gray-400">{roleCode.length}/50</span>
-            </div>
-          </div>
-
-          <div>
-            <label className="block mb-2 text-sm font-normal text-gray-700">
-              <span className="text-red-500 mr-1">*</span>角色名称
-            </label>
-            <input
-              type="text"
-              value={roleName}
-              onChange={(e) => setRoleName(e.target.value)}
-              placeholder="请输入角色名称"
-              className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all"
-              maxLength={50}
-            />
-            <div className="flex justify-between mt-1.5">
-              <span className="text-xs text-gray-400">最大长度50个字符</span>
-              <span className="text-xs text-gray-400">{roleName.length}/50</span>
             </div>
           </div>
 
@@ -185,7 +157,6 @@ export function CreateRoleModal({ onClose }: BaseModalProps) {
 
 export function EditRoleModal({ onClose, role }: BaseModalProps & { role?: Role }) {
   const [roleCode, setRoleCode] = useState(role?.roleCode || '');
-  const [roleName, setRoleName] = useState(role?.roleName || '');
   const [remark, setRemark] = useState(role?.remark || '');
   const [enabled, setEnabled] = useState(role?.enabled === 1);
   const [loading, setLoading] = useState(false);
@@ -202,16 +173,8 @@ export function EditRoleModal({ onClose, role }: BaseModalProps & { role?: Role 
       setError('角色编码不能为空');
       return;
     }
-    if (!roleName.trim()) {
-      setError('角色名称不能为空');
-      return;
-    }
     if (roleCode.length > 50) {
       setError('角色编码最大长度为50个字符');
-      return;
-    }
-    if (roleName.length > 50) {
-      setError('角色名称最大长度为50个字符');
       return;
     }
     if (remark.length > 200) {
@@ -223,7 +186,6 @@ export function EditRoleModal({ onClose, role }: BaseModalProps & { role?: Role 
       setLoading(true);
       await roleAPI.updateRole(role.id, {
         roleCode,
-        roleName,
         remark,
         enabled: enabled ? 1 : 0,
       });
@@ -263,29 +225,13 @@ export function EditRoleModal({ onClose, role }: BaseModalProps & { role?: Role 
               type="text"
               value={roleCode}
               onChange={(e) => setRoleCode(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-800 placeholder-gray-400 text-sm focus:outline-none"
+              disabled
+              className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-gray-500 cursor-not-allowed text-sm focus:outline-none"
               maxLength={50}
             />
             <div className="flex justify-between text-xs text-gray-400 pt-1">
               <span>最大长度50个字符</span>
               <span>{roleCode.length}/50</span>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">
-              <span className="text-red-500 mr-1">*</span>角色名称
-            </label>
-            <input
-              type="text"
-              value={roleName}
-              onChange={(e) => setRoleName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-800 placeholder-gray-400 text-sm focus:outline-none"
-              maxLength={50}
-            />
-            <div className="flex justify-between text-xs text-gray-400 pt-1">
-              <span>最大长度50个字符</span>
-              <span>{roleName.length}/50</span>
             </div>
           </div>
 

@@ -86,12 +86,9 @@ export function ConfirmModal({
             <div className="flex-1 min-w-0">
               <p className={`text-sm font-medium ${config.textColor} mb-2`}>{message}</p>
               {details.length > 0 && (
-                <ul className="text-sm text-gray-600 space-y-1 mt-3">
+                <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600 mt-3 max-h-60 overflow-y-auto">
                   {details.map((detail, index) => (
-                    <li key={index} className="flex items-start">
-                      <span className="mr-2">•</span>
-                      <span className="flex-1">{detail}</span>
-                    </li>
+                    <li key={index}>{detail}</li>
                   ))}
                 </ul>
               )}

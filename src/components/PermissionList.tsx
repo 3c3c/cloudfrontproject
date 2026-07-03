@@ -3,7 +3,7 @@ import { Permission } from '../types';
 
 interface PermissionListProps {
   permissions: Permission[];
-  openModal: (type: 'createPermission' | 'editPermission' | 'batchAuthorize', data?: Permission) => void;
+  openModal: (type: 'createPermission' | 'editPermission', data?: Permission) => void;
 }
 
 export function PermissionList({ permissions, openModal }: PermissionListProps) {
@@ -67,7 +67,6 @@ export function PermissionList({ permissions, openModal }: PermissionListProps) 
                     <td className="p-4 text-center text-gray-700">{perm.description}</td>
                     <td className="p-4">
                       <div className="flex justify-center space-x-4">
-                        <button onClick={() => openModal('batchAuthorize', perm)} className="text-blue-500 hover:text-blue-700 text-sm">批量授权</button>
                         <button onClick={() => openModal('editPermission', perm)} className="text-emerald-500 hover:text-emerald-700 text-sm">编辑权限</button>
                         <button className="text-red-500 hover:text-red-700 text-sm">删除权限</button>
                       </div>

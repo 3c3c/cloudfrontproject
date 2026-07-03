@@ -13,7 +13,7 @@ import { PermissionList } from './components/PermissionList';
 import { LogList } from './components/LogList';
 import { CreateRoleModal, EditRoleModal, RoleMemberModal, RolePermissionModal } from './components/RoleModals';
 import { CreateUserModal, EditUserModal, SelectRoleModal, UserPermissionModal, ResetPasswordModal } from './components/UserModals';
-import { PermissionModal, BatchAuthorizeModal } from './components/PermissionModals';
+import { PermissionModal } from './components/PermissionModals';
 import { Auth } from './components/Auth';
 import { ViewState, ModalState, Role, User, Permission } from './types';
 import { mockRoles, mockUsers, mockPermissions, mockLogs } from './data';
@@ -47,7 +47,7 @@ function MainApp() {
       setModalState({ type, user: data as User } as ModalState);
     } else if ((type === 'selectRole' || type === 'userPermission' || type === 'resetPassword') && data) {
       setModalState({ type, user: data as User } as ModalState);
-    } else if ((type === 'editPermission' || type === 'batchAuthorize') && data) {
+    } else if (type === 'editPermission' && data) {
       setModalState({ type, permission: data as Permission } as ModalState);
     } else if (data) {
       setModalState({ type, role: data as Role } as ModalState);
@@ -59,7 +59,7 @@ function MainApp() {
     setModalState({ type: 'none' });
 
     // 只有在明确需要刷新时才刷新列表（如创建、编辑成功后）
-    if (shouldRefresh && ['createRole', 'editRole', 'roleMember', 'rolePermission', 'createUser', 'editUser', 'selectRole', 'userPermission', 'resetPassword'].includes(currentType)) {
+    if (shouldRefresh === true && ['createRole', 'editRole', 'roleMember', 'rolePermission', 'createUser', 'editUser', 'selectRole', 'userPermission', 'resetPassword'].includes(currentType)) {
       setRefreshKey(prev => prev + 1);
     }
   };
@@ -109,6 +109,7 @@ function MainApp() {
         {viewState.type === 'userDetail' && (
           <UserDetail
             user={viewState.user}
+            refreshKey={refreshKey}
             onBack={() => setViewState({ type: 'users' })}
             openModal={handleOpenModal}
           />
@@ -134,7 +135,6 @@ function MainApp() {
       {modalState.type === 'resetPassword' && <ResetPasswordModal onClose={handleCloseModal} user={modalState.user} />}
       {modalState.type === 'createPermission' && <PermissionModal onClose={handleCloseModal} />}
       {modalState.type === 'editPermission' && <PermissionModal onClose={handleCloseModal} permission={modalState.permission} />}
-      {modalState.type === 'batchAuthorize' && <BatchAuthorizeModal onClose={handleCloseModal} permission={modalState.permission} />}
     </div>
   );
 }

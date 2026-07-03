@@ -1,7 +1,8 @@
 import { useState, useRef, type ChangeEvent, useEffect, type FormEvent } from 'react';
 import { X, Search, Upload, Eye, EyeOff } from 'lucide-react';
-import { mockRoles, mockPermissions } from '../data';
+import { mockPermissions } from '../data';
 import { userAPI } from '../api/userApi';
+import { roleAPI, type RoleResponse } from '../api/roleApi';
 import { encryptPassword } from '../utils/crypto';
 import { toast } from '../utils/toastHelpers';
 
@@ -15,17 +16,17 @@ interface EditUserModalProps {
 }
 
 interface SelectRoleModalProps {
-  onClose: () => void;
+  onClose: (shouldRefresh?: boolean) => void;
   user?: import('../types').User;
 }
 
 interface UserPermissionModalProps {
-  onClose: () => void;
+  onClose: (shouldRefresh?: boolean) => void;
   user?: import('../types').User;
 }
 
 interface ResetPasswordModalProps {
-  onClose: () => void;
+  onClose: (shouldRefresh?: boolean) => void;
   user?: import('../types').User;
 }
 
@@ -536,6 +537,77 @@ export function EditUserModal({ onClose, user }: EditUserModalProps) {
 }
 
 export function SelectRoleModal({ onClose, user }: SelectRoleModalProps) {
+  const [roles, setRoles] = useState<RoleResponse[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [keyword, setKeyword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // 查询候选角色（用户未拥有），按名称搜索
+  const fetchRoles = async (kw?: string) => {
+    const userId = user?.id;
+    if (!userId) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await roleAPI.getNotAssignedRoles(userId, kw?.trim() || undefined);
+      setRoles(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '查询用户未拥有角色失败');
+      setRoles([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 初次打开加载一次；后续仅在点击搜索按钮/回车时按输入关键词请求
+  useEffect(() => {
+    fetchRoles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  const handleSearch = () => {
+    fetchRoles(keyword);
+  };
+
+  const toggleRole = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // 全选/取消全选（仅作用于当前候选列表中的角色）
+  const toggleAll = () => {
+    setSelectedIds(prev => {
+      if (roles.length > 0 && roles.every(r => prev.has(r.id))) {
+        const next = new Set(prev);
+        roles.forEach(r => next.delete(r.id));
+        return next;
+      }
+      const next = new Set(prev);
+      roles.forEach(r => next.add(r.id));
+      return next;
+    });
+  };
+
+  const handleSubmit = async () => {
+    const userId = user?.id;
+    if (!userId) return;
+    setSubmitting(true);
+    try {
+      await userAPI.bindUserRoles(userId, Array.from(selectedIds));
+      onClose(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '分配角色失败');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white w-full max-w-[680px] rounded-sm shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
@@ -563,7 +635,7 @@ export function SelectRoleModal({ onClose, user }: SelectRoleModalProps) {
               disabled
               value={user?.account || ''}
               placeholder="用户账号"
-              className="w-full border border-gray-200 bg-gray-50 rounded-sm px-3 py-2 text-sm text-gray-500 cursor-not-allowed"
+              className="w-full border border-gray-200 bg-gray-100 rounded-sm px-3 py-2 text-sm text-gray-500 cursor-not-allowed"
             />
           </div>
 
@@ -574,31 +646,55 @@ export function SelectRoleModal({ onClose, user }: SelectRoleModalProps) {
             <div className="relative">
               <input
                 type="text"
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 placeholder="请输入角色名称或角色说明"
                 className="w-full border border-gray-300 rounded-full px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all"
               />
-              <button className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors">
+              <button onClick={handleSearch} className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors">
                 <Search className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          <div className="text-sm text-red-500 mb-2">请选择角色</div>
+          {selectedIds.size === 0 ? (
+            <div className="text-sm text-red-500 mb-2">请选择角色</div>
+          ) : null}
 
           <div className="border border-gray-200 rounded-sm overflow-hidden">
             <table className="w-full text-left text-sm">
               <thead className="bg-gray-50 text-gray-500 border-b border-gray-200">
                 <tr>
-                  <th className="p-3 w-12 text-center"></th>
-                  <th className="p-3 font-medium text-center">角色名称</th>
+                  <th className="p-3 w-12 text-center">
+                    <input
+                      type="checkbox"
+                      checked={roles.length > 0 && roles.every(r => selectedIds.has(r.id))}
+                      onChange={toggleAll}
+                      className="rounded border-gray-300 text-blue-500 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                    />
+                  </th>
+                  <th className="p-3 font-medium text-center">角色编码</th>
                   <th className="p-3 font-medium text-center">角色说明</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {mockRoles.map((role, i) => (
+                {loading ? (
+                  <tr>
+                    <td colSpan={3} className="p-6 text-center text-gray-400">加载中...</td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan={3} className="p-6 text-center text-red-500">{error}</td>
+                  </tr>
+                ) : roles.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="p-6 text-center text-gray-400">暂无可分配的角色</td>
+                  </tr>
+                ) : roles.map((role) => (
                   <tr key={role.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="p-3 text-center"><input type="checkbox" className="rounded border-gray-300 text-blue-500 focus:ring-blue-500 w-4 h-4 cursor-pointer" /></td>
-                    <td className="p-3 text-center text-gray-700">{role.roleName}</td>
+                    <td className="p-3 text-center"><input type="checkbox" checked={selectedIds.has(role.id)} onChange={() => toggleRole(role.id)} className="rounded border-gray-300 text-blue-500 focus:ring-blue-500 w-4 h-4 cursor-pointer" /></td>
+                    <td className="p-3 text-center text-gray-700">{role.roleCode}</td>
                     <td className="p-3 text-center text-gray-700">{role.remark}</td>
                   </tr>
                 ))}
@@ -608,8 +704,14 @@ export function SelectRoleModal({ onClose, user }: SelectRoleModalProps) {
         </div>
 
         <div className="px-6 py-4 border-t border-gray-100 bg-white flex justify-end space-x-3">
-          <button onClick={onClose} className="bg-blue-500 text-white px-8 py-2 rounded-sm text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm">提交</button>
-          <button onClick={onClose} className="bg-white text-gray-600 border border-gray-300 px-8 py-2 rounded-sm text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm">取消</button>
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || selectedIds.size === 0}
+            className="bg-blue-500 text-white px-8 py-2 rounded-sm text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? '提交中...' : '提交'}
+          </button>
+          <button onClick={onClose} disabled={submitting} className="bg-white text-gray-600 border border-gray-300 px-8 py-2 rounded-sm text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">取消</button>
         </div>
       </div>
     </div>
@@ -682,7 +784,7 @@ export function UserPermissionModal({ onClose, user }: UserPermissionModalProps)
         </div>
 
         <div className="px-6 py-4 border-t border-gray-100 bg-white flex justify-end space-x-3">
-          <button onClick={onClose} className="bg-blue-500 text-white px-8 py-2 rounded-sm text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm">提交</button>
+          <button onClick={() => onClose(true)} className="bg-blue-500 text-white px-8 py-2 rounded-sm text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm">提交</button>
           <button onClick={onClose} className="bg-white text-gray-600 border border-gray-300 px-8 py-2 rounded-sm text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm">取消</button>
         </div>
       </div>
@@ -777,7 +879,7 @@ export function ResetPasswordModal({ onClose, user }: ResetPasswordModalProps) {
         </div>
 
         <div className="px-6 py-4 border-t border-gray-100 bg-white flex justify-end space-x-3">
-          <button onClick={onClose} className="bg-blue-500 text-white px-8 py-2 rounded-sm text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm">提交</button>
+          <button onClick={() => onClose(true)} className="bg-blue-500 text-white px-8 py-2 rounded-sm text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm">提交</button>
           <button onClick={onClose} className="bg-white text-gray-600 border border-gray-300 px-8 py-2 rounded-sm text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm">取消</button>
         </div>
       </div>

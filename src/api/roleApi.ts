@@ -9,7 +9,6 @@ const ROLE_PREFIX = '/auth/roles';
 
 export interface RoleRequest {
   roleCode: string;
-  roleName: string;
   remark?: string;
   enabled?: number;
 }
@@ -53,12 +52,12 @@ class RoleAPI {
   async getRoleList(params?: {
     current?: number;
     size?: number;
-    roleName?: string;
+    keyword?: string;
   }): Promise<RoleListResponse> {
     const queryParams = new URLSearchParams();
     if (params?.current) queryParams.append('current', params.current.toString());
     if (params?.size) queryParams.append('size', params.size.toString());
-    if (params?.roleName) queryParams.append('roleName', params.roleName);
+    if (params?.keyword) queryParams.append('keyword', params.keyword);
 
     const url = `${this.baseUrl}${ROLE_PREFIX}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
 
@@ -104,6 +103,95 @@ class RoleAPI {
     }
 
     return result.data;
+  }
+
+  /**
+   * 查询用户未拥有的角色（为用户分配角色时的候选列表）
+   * GET /auth/roles/not-assigned?userId=&keyword=
+   */
+  async getNotAssignedRoles(userId: number, keyword?: string): Promise<RoleResponse[]> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('userId', userId.toString());
+    if (keyword) queryParams.append('keyword', keyword);
+
+    const url = `${this.baseUrl}${ROLE_PREFIX}/not-assigned?${queryParams.toString()}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': localStorage.getItem('auth_token') || '',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || '查询用户未拥有角色失败');
+    }
+
+    const result: ApiResponse<RoleResponse[]> = await response.json();
+    if (result.code !== 200) {
+      throw new Error(result.message || '查询用户未拥有角色失败');
+    }
+
+    return result.data;
+  }
+
+  /**
+   * 根据用户ID查询角色列表（用户已拥有的角色）
+   * GET /auth/roles/user/{userId}?keyword=
+   * keyword 可模糊匹配角色编码或角色说明，不区分大小写
+   */
+  async getRolesByUserId(userId: number, keyword?: string): Promise<RoleResponse[]> {
+    const queryParams = new URLSearchParams();
+    if (keyword) queryParams.append('keyword', keyword);
+
+    const url = `${this.baseUrl}${ROLE_PREFIX}/user/${userId}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': localStorage.getItem('auth_token') || '',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || '查询用户角色列表失败');
+    }
+
+    const result: ApiResponse<RoleResponse[]> = await response.json();
+    if (result.code !== 200) {
+      throw new Error(result.message || '查询用户角色列表失败');
+    }
+
+    return result.data;
+  }
+
+  /**
+   * 批量删除用户拥有的角色（解除用户与角色的绑定关系）
+   * DELETE /auth/users/{userId}/roles
+   * 请求体为要删除的角色ID数组，如 [1, 2, 3]；
+   * 仅删除绑定关系，不影响 sys_role 中的角色数据本身，操作幂等。
+   */
+  async deleteUserRoles(userId: number, roleIds: number[]): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/auth/users/${userId}/roles`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': localStorage.getItem('auth_token') || '',
+      },
+      body: JSON.stringify(roleIds),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || '删除用户角色失败');
+    }
+
+    const result: ApiResponse<null> = await response.json();
+    if (result.code !== 200) {
+      throw new Error(result.message || '删除用户角色失败');
+    }
   }
 
   /**

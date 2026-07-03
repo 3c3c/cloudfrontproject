@@ -20,6 +20,10 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState('');
+  // 用 ref 保存最新搜索词，使 fetchRoles 不依赖 searchKeyword，
+  // 从而输入时不会触发实时搜索（仅点击搜索图标/回车时由 handleSearch 触发）
+  const searchKeywordRef = useRef(searchKeyword);
+  searchKeywordRef.current = searchKeyword;
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
   const [total, setTotal] = useState(0);
@@ -43,7 +47,7 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
       const response = await roleAPI.getRoleList({
         current: currentPage,
         size: pageSize,
-        roleName: searchKeyword || undefined,
+        keyword: searchKeywordRef.current || undefined,
       });
 
       setRoles(response.records);
@@ -55,7 +59,7 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, searchKeyword]);
+  }, [currentPage, pageSize]);
 
   // 初始化加载
   useEffect(() => {
@@ -97,7 +101,7 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
   const handleToggleStatus = async (role: Role) => {
     try {
       const newEnabled = role.enabled === 1 ? 0 : 1;
-      console.log('切换角色状态:', { roleId: role.id, roleName: role.roleName, currentEnabled: role.enabled, newEnabled });
+      console.log('切换角色状态:', { roleId: role.id, roleCode: role.roleCode, currentEnabled: role.enabled, newEnabled });
 
       await roleAPI.updateRoleStatus(role.id, newEnabled);
 
@@ -130,7 +134,7 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
       await fetchRoles();
 
       // 显示成功提示
-      toast.success(`角色"${pendingDeleteRole.roleName}"已删除`, 3000);
+      toast.success(`角色"${pendingDeleteRole.roleCode}"已删除`, 3000);
       setShowDeleteConfirm(false);
       setPendingDeleteRole(null);
     } catch (err) {
@@ -278,7 +282,7 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
           <div className="relative">
             <input
               type="text"
-              placeholder="请输入角色名称"
+              placeholder="请输入角色编码或说明"
               value={searchKeyword}
               onChange={(e) => setSearchKeyword(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
@@ -438,7 +442,7 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
         <ConfirmModal
           isOpen={showDeleteConfirm}
           title="删除角色"
-          message={`确定要删除角色"${pendingDeleteRole.roleName}"吗？`}
+          message={`确定要删除角色"${pendingDeleteRole.roleCode}"吗？`}
           type="danger"
           confirmText="删除"
           cancelText="取消"
@@ -448,26 +452,17 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
             setPendingDeleteRole(null);
           }}
           details={[
-            `角色编码：${pendingDeleteRole.roleCode}`,
-            pendingDeleteRole.remark ? `角色说明：${pendingDeleteRole.remark}` : undefined,
-            `当前状态：${pendingDeleteRole.enabled === 1 ? '启用' : '禁用'}`,
             '此操作将逻辑删除该角色，删除后数据将无法恢复！'
-          ].filter(Boolean)}
+          ]}
         />
       )}
 
       {/* 批量删除确认弹框 */}
       {(() => {
-        const roleNames = roles
-          .filter(r => selectedIds.includes(r.id))
-          .map(r => r.roleName)
-          .slice(0, 3);
         const details = [
-          `将要删除 ${selectedIds.length} 个角色`,
-          ...roleNames.map(name => `- ${name}`),
-          selectedIds.length > 3 ? `... 还有 ${selectedIds.length - 3} 个角色` : undefined,
+          ...roles.filter(r => selectedIds.includes(r.id)).map(r => r.roleCode),
           '此操作将逻辑删除选中角色，删除后数据将无法恢复！'
-        ].filter(Boolean);
+        ];
 
         return (
           <ConfirmModal
@@ -486,15 +481,9 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
 
       {/* 批量启用确认弹框 */}
       {(() => {
-        const roleNames = roles
-          .filter(r => selectedIds.includes(r.id))
-          .map(r => r.roleName)
-          .slice(0, 3);
         const details = [
-          `将要启用 ${selectedIds.length} 个角色`,
-          ...roleNames.map(name => `- ${name}`),
-          selectedIds.length > 3 ? `... 还有 ${selectedIds.length - 3} 个角色` : undefined
-        ].filter(Boolean);
+          ...roles.filter(r => selectedIds.includes(r.id)).map(r => r.roleCode)
+        ];
 
         return (
           <ConfirmModal
@@ -513,15 +502,9 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
 
       {/* 批量禁用确认弹框 */}
       {(() => {
-        const roleNames = roles
-          .filter(r => selectedIds.includes(r.id))
-          .map(r => r.roleName)
-          .slice(0, 3);
         const details = [
-          `将要禁用 ${selectedIds.length} 个角色`,
-          ...roleNames.map(name => `- ${name}`),
-          selectedIds.length > 3 ? `... 还有 ${selectedIds.length - 3} 个角色` : undefined
-        ].filter(Boolean);
+          ...roles.filter(r => selectedIds.includes(r.id)).map(r => r.roleCode)
+        ];
 
         return (
           <ConfirmModal

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, RefreshCw, X, CheckCircle2, Ban, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, RefreshCw, CheckCircle2, Ban, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { User } from '../types';
 import { userAPI } from '../api/userApi';
 import { toast } from '../utils/toastHelpers';
@@ -8,7 +8,7 @@ import { ConfirmModal } from './ConfirmModal';
 interface UserListProps {
   refreshKey?: number;
   onViewDetail: (user: User) => void;
-  openModal: (type: 'createUser' | 'selectRole' | 'userPermission', user?: User) => void;
+  openModal: (type: 'createUser', user?: User) => void;
 }
 
 export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps) {
@@ -23,6 +23,8 @@ export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps)
   const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
   const [showBatchEnableConfirm, setShowBatchEnableConfirm] = useState(false);
   const [showBatchDisableConfirm, setShowBatchDisableConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
   // 加载用户列表
   const loadUsers = async () => {
@@ -65,13 +67,6 @@ export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps)
 
   // 搜索用户
   const handleSearch = () => {
-    setCurrentPage(1);
-    loadUsers();
-  };
-
-  // 清空搜索
-  const handleClearSearch = () => {
-    setKeyword('');
     setCurrentPage(1);
     loadUsers();
   };
@@ -124,12 +119,16 @@ export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps)
     }
   };
 
-  // 删除单个用户
-  const handleDeleteUser = async (userId: number) => {
-    if (!confirm('确定要删除该用户吗？')) {
-      return;
-    }
+  // 删除单个用户（弹出二次确认）
+  const handleDeleteUser = (userId: number) => {
+    setDeleteTargetId(userId);
+    setShowDeleteConfirm(true);
+  };
 
+  // 确认删除单个用户
+  const confirmDeleteUser = async () => {
+    if (deleteTargetId === null) return;
+    const userId = deleteTargetId;
     try {
       await userAPI.deleteUser(userId);
 
@@ -143,6 +142,9 @@ export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps)
       console.error('删除用户失败:', error);
       const errorMessage = error instanceof Error ? error.message : '删除用户失败';
       toast.error(errorMessage, 5000);
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeleteTargetId(null);
     }
   };
 
@@ -293,14 +295,6 @@ export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps)
             >
               <Search className="w-4 h-4" />
             </button>
-            {keyword && (
-              <button
-                onClick={handleClearSearch}
-                className="absolute right-8 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
           </div>
         </div>
         <button
@@ -390,18 +384,6 @@ export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps)
                     <td className="p-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-center space-x-4">
                         <button
-                          onClick={() => openModal('selectRole', user)}
-                          className="text-blue-500 hover:text-blue-700 text-sm"
-                        >
-                          角色选择
-                        </button>
-                        <button
-                          onClick={() => openModal('userPermission', user)}
-                          className="text-emerald-500 hover:text-emerald-700 text-sm"
-                        >
-                          权限设置
-                        </button>
-                        <button
                           onClick={() => handleDeleteUser(user.id)}
                           className="text-red-500 hover:text-red-700 text-sm"
                         >
@@ -489,41 +471,87 @@ export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps)
         </div>
       </div>
 
-      {/* 批量删除确认弹框 */}
+      {/* 删除用户确认弹框 */}
       <ConfirmModal
-        isOpen={showBatchDeleteConfirm}
-        title="批量删除用户"
-        message={`确定要删除选中的 ${selectedUsers.size} 个用户吗？`}
+        isOpen={showDeleteConfirm}
+        title="删除用户"
+        message={`确定要删除用户"${users.find(u => u.id === deleteTargetId)?.account || ''}"吗？`}
         type="danger"
         confirmText="删除"
         cancelText="取消"
-        onConfirm={confirmBatchDelete}
-        onCancel={() => setShowBatchDeleteConfirm(false)}
+        onConfirm={confirmDeleteUser}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setDeleteTargetId(null);
+        }}
+        details={[
+          '此操作将逻辑删除该用户，删除后数据将无法恢复！'
+        ]}
       />
+
+      {/* 批量删除确认弹框 */}
+      {(() => {
+        const details = [
+          ...users.filter(u => selectedUsers.has(u.id)).map(u => u.account),
+          '此操作将逻辑删除选中用户，删除后数据将无法恢复！'
+        ];
+
+        return (
+          <ConfirmModal
+            isOpen={showBatchDeleteConfirm}
+            title="批量删除用户"
+            message={`确定要删除选中的 ${selectedUsers.size} 个用户吗？`}
+            type="danger"
+            confirmText="删除"
+            cancelText="取消"
+            onConfirm={confirmBatchDelete}
+            onCancel={() => setShowBatchDeleteConfirm(false)}
+            details={details}
+          />
+        );
+      })()}
 
       {/* 批量启用确认弹框 */}
-      <ConfirmModal
-        isOpen={showBatchEnableConfirm}
-        title="批量启用用户"
-        message={`确定要启用选中的 ${selectedUsers.size} 个用户吗？`}
-        type="success"
-        confirmText="启用"
-        cancelText="取消"
-        onConfirm={confirmBatchEnable}
-        onCancel={() => setShowBatchEnableConfirm(false)}
-      />
+      {(() => {
+        const details = [
+          ...users.filter(u => selectedUsers.has(u.id)).map(u => u.account)
+        ];
+
+        return (
+          <ConfirmModal
+            isOpen={showBatchEnableConfirm}
+            title="批量启用用户"
+            message={`确定要启用选中的 ${selectedUsers.size} 个用户吗？`}
+            type="success"
+            confirmText="启用"
+            cancelText="取消"
+            onConfirm={confirmBatchEnable}
+            onCancel={() => setShowBatchEnableConfirm(false)}
+            details={details}
+          />
+        );
+      })()}
 
       {/* 批量禁用确认弹框 */}
-      <ConfirmModal
-        isOpen={showBatchDisableConfirm}
-        title="批量禁用用户"
-        message={`确定要禁用选中的 ${selectedUsers.size} 个用户吗？`}
-        type="warning"
-        confirmText="禁用"
-        cancelText="取消"
-        onConfirm={confirmBatchDisable}
-        onCancel={() => setShowBatchDisableConfirm(false)}
-      />
+      {(() => {
+        const details = [
+          ...users.filter(u => selectedUsers.has(u.id)).map(u => u.account)
+        ];
+
+        return (
+          <ConfirmModal
+            isOpen={showBatchDisableConfirm}
+            title="批量禁用用户"
+            message={`确定要禁用选中的 ${selectedUsers.size} 个用户吗？`}
+            type="warning"
+            confirmText="禁用"
+            cancelText="取消"
+            onConfirm={confirmBatchDisable}
+            onCancel={() => setShowBatchDisableConfirm(false)}
+            details={details}
+          />
+        );
+      })()}
     </div>
   );
 }

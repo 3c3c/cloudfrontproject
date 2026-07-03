@@ -2,7 +2,6 @@
  * 用户管理 API 接口
  * 基于 UserController API 文档实现
  */
-
 // 使用代理模式，所有请求通过 Vite 代理到后端网关
 const API_BASE_URL = '/api';
 const USER_PREFIX = '/auth/users';
@@ -252,6 +251,35 @@ class UserAPI {
     if (result.code !== 200) {
       throw new Error(result.message || '批量更新用户状态失败');
     }
+  }
+
+  /**
+   * 用户绑定角色（覆盖式分配）
+   * PUT /auth/users/roles
+   * roleIds 为该用户的最终角色集合——不在其中的原有角色将被解绑；
+   * 传空数组表示解除该用户的所有角色绑定。
+   */
+  async bindUserRoles(userId: number, roleIds: number[]): Promise<boolean> {
+    const response = await fetch(`${this.baseUrl}${USER_PREFIX}/roles`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': localStorage.getItem('auth_token') || '',
+      },
+      body: JSON.stringify({ userId, roleIds }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || '分配角色失败');
+    }
+
+    const result: ApiResponse<boolean> = await response.json();
+    if (result.code !== 200) {
+      throw new Error(result.message || '分配角色失败');
+    }
+
+    return result.data;
   }
 }
 

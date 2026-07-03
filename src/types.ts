@@ -73,5 +73,4 @@ export type ModalState =
   | { type: 'userPermission'; user?: User }
   | { type: 'resetPassword'; user: User }
   | { type: 'createPermission' }
-  | { type: 'editPermission'; permission: Permission }
-  | { type: 'batchAuthorize'; permission: Permission };
+  | { type: 'editPermission'; permission: Permission };
