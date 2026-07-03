@@ -51,7 +51,7 @@ export function DictionaryManagement() {
   const [typeDesc, setTypeDesc] = useState('');
   const [itemLabel, setItemLabel] = useState('');
   const [itemValue, setItemValue] = useState('');
-  const [itemSort, setItemSort] = useState(0);
+  const [itemSort, setItemSort] = useState<string>('0');
   const [itemDesc, setItemDesc] = useState('');
   const [formError, setFormError] = useState('');
 
@@ -97,16 +97,21 @@ export function DictionaryManagement() {
   }, [fetchTypes]);
 
   const selectedType = types.find((t) => t.id === selectedTypeId) ?? null;
+  // 用 ref 读取最新 types，使下方 effect 仅依赖 selectedTypeId，
+  // 避免类型内容编辑（本地更新 types）误触发字典项重新请求
+  const typesRef = useRef(types);
+  typesRef.current = types;
 
-  // 选中类型或类型列表变化时，加载该类型字典项
+  // 仅在选中的类型切换时加载该类型字典项
   useEffect(() => {
-    if (selectedType && selectedType.enabled) {
+    const t = typesRef.current.find((x) => x.id === selectedTypeId) ?? null;
+    if (t && t.enabled) {
       setPage(1);
-      fetchItems(selectedType.code);
+      fetchItems(t.code);
     } else {
       setItems([]);
     }
-  }, [selectedType, fetchItems]);
+  }, [selectedTypeId, fetchItems]);
 
   // 构建多级树
   const tree = useMemo<TypeTreeNode[]>(() => {
@@ -248,15 +253,10 @@ export function DictionaryManagement() {
     const name = typeName.trim();
     const code = typeCode.trim();
     if (!name || !code) {
-      setFormError('名称和编码不能为空');
+      toast.error('名称和编码不能为空', 3000);
       return;
     }
     const isEdit = typeModal.mode === 'edit';
-    const editId = isEdit ? typeModal.typeId : undefined;
-    if (types.some((t) => t.code === code && t.id !== editId)) {
-      setFormError(`编码 "${code}" 已存在`);
-      return;
-    }
     const originParentId = isEdit
       ? types.find((t) => t.id === typeModal.typeId)?.parentId
       : undefined;
@@ -268,21 +268,21 @@ export function DictionaryManagement() {
         typeModal.mode === 'create-child' ? typeModal.parentId : originParentId ?? null,
     };
     try {
+      setFormError('');
       if (isEdit) {
-        await dictAPI.updateType(typeModal.typeId, payload);
-        toast.success('字典类型已更新', 2000);
+        const updated = await dictAPI.updateType(typeModal.typeId, payload);
+        setTypes((prev) => prev.map((t) => (t.id === typeModal.typeId ? updated : t)));
       } else {
-        await dictAPI.createType(payload);
-        toast.success('字典类型已创建', 2000);
+        const created = await dictAPI.createType(payload);
+        setTypes((prev) => [...prev, created]);
         if (typeModal.mode === 'create-child') {
           const pid = typeModal.parentId;
           setExpandedIds((prev) => new Set(prev).add(pid));
         }
       }
       setTypeModal(null);
-      await fetchTypes();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : '保存失败');
+      toast.error(err instanceof Error ? err.message : '保存失败', 5000);
     }
   };
 
@@ -329,8 +329,9 @@ export function DictionaryManagement() {
         try {
           await dictAPI.batchDeleteTypes(ids);
           setConfirm(null);
-          toast.success(`类型"${type.name}"已删除`, 2000);
-          await fetchTypes();
+          // 本地剔除被删节点及其子孙，不再整表刷新
+          setTypes((prev) => prev.filter((t) => !ids.includes(t.id)));
+          setSelectedTypeId((cur) => (cur && ids.includes(cur) ? null : cur));
         } catch (err) {
           toast.error(err instanceof Error ? err.message : '删除失败', 5000);
           setConfirm(null);
@@ -344,7 +345,7 @@ export function DictionaryManagement() {
     if (!selectedType?.enabled) return;
     setItemLabel('');
     setItemValue('');
-    setItemSort(0);
+    setItemSort('0');
     setItemDesc('');
     setFormError('');
     setItemModal({ mode: 'create' });
@@ -353,7 +354,7 @@ export function DictionaryManagement() {
   const openEditItem = (item: DictionaryItem) => {
     setItemLabel(item.label);
     setItemValue(item.value);
-    setItemSort(item.sortOrder);
+    setItemSort(String(item.sortOrder));
     setItemDesc(item.description || '');
     setFormError('');
     setItemModal({ mode: 'edit', item });
@@ -364,38 +365,28 @@ export function DictionaryManagement() {
     const label = itemLabel.trim();
     const value = itemValue.trim();
     if (!label || !value) {
-      setFormError('键和值不能为空');
-      return;
-    }
-    const editId = itemModal.mode === 'edit' ? itemModal.item.id : undefined;
-    const sameType = items.filter((i) => i.typeId === selectedTypeId && i.id !== editId);
-    if (sameType.some((i) => i.label === label)) {
-      setFormError(`键 "${label}" 已存在`);
-      return;
-    }
-    if (sameType.some((i) => i.value === value)) {
-      setFormError(`值 "${value}" 已存在`);
+      toast.error('键和值不能为空', 3000);
       return;
     }
     const payload: DictDataRequest = {
       typeId: selectedTypeId,
       label,
       value,
-      sortOrder: itemSort,
+      sortOrder: Number(itemSort) || 0,
       description: itemDesc.trim() || undefined,
     };
     try {
+      setFormError('');
       if (itemModal.mode === 'edit') {
-        await dictAPI.updateData(itemModal.item.id, payload);
-        toast.success('字典项已更新', 2000);
+        const updated = await dictAPI.updateData(itemModal.item.id, payload);
+        setItems((prev) => prev.map((i) => (i.id === itemModal.item.id ? updated : i)));
       } else {
-        await dictAPI.createData(payload);
-        toast.success('字典项已创建', 2000);
+        const created = await dictAPI.createData(payload);
+        setItems((prev) => [...prev, created]);
       }
       setItemModal(null);
-      if (selectedType) await fetchItems(selectedType.code);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : '保存失败');
+      toast.error(err instanceof Error ? err.message : '保存失败', 5000);
     }
   };
 
@@ -407,7 +398,6 @@ export function DictionaryManagement() {
         try {
           await dictAPI.batchDeleteData([item.id]);
           setConfirm(null);
-          toast.success(`字典项"${item.label}"已删除`, 2000);
           if (selectedType) await fetchItems(selectedType.code);
         } catch (err) {
           toast.error(err instanceof Error ? err.message : '删除失败', 5000);
@@ -733,7 +723,7 @@ export function DictionaryManagement() {
                   ? '编辑字典类型'
                   : typeModal.mode === 'create-child'
                     ? '新增子类型'
-                    : '新增根字典类型'}
+                    : '新增字典类型'}
               </h2>
               <button onClick={() => setTypeModal(null)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
@@ -749,6 +739,7 @@ export function DictionaryManagement() {
                   onChange={(e) => setTypeName(e.target.value)}
                   placeholder="例如：性别"
                   maxLength={64}
+                  autoComplete="off"
                   className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
                 />
               </div>
@@ -761,6 +752,7 @@ export function DictionaryManagement() {
                   onChange={(e) => setTypeCode(e.target.value)}
                   placeholder="唯一标识，如 gender"
                   maxLength={64}
+                  autoComplete="off"
                   className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
                 />
               </div>
@@ -769,6 +761,7 @@ export function DictionaryManagement() {
                 <textarea
                   value={typeDesc}
                   onChange={(e) => setTypeDesc(e.target.value)}
+                  autoComplete="off"
                   className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 min-h-[64px] resize-y"
                 />
               </div>
@@ -812,6 +805,7 @@ export function DictionaryManagement() {
                 <input
                   value={itemLabel}
                   onChange={(e) => setItemLabel(e.target.value)}
+                  autoComplete="off"
                   className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
                 />
               </div>
@@ -822,6 +816,7 @@ export function DictionaryManagement() {
                 <input
                   value={itemValue}
                   onChange={(e) => setItemValue(e.target.value)}
+                  autoComplete="off"
                   className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
                 />
               </div>
@@ -830,7 +825,8 @@ export function DictionaryManagement() {
                 <input
                   type="number"
                   value={itemSort}
-                  onChange={(e) => setItemSort(Number(e.target.value))}
+                  onChange={(e) => setItemSort(e.target.value)}
+                  autoComplete="off"
                   className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
                 />
               </div>
@@ -839,6 +835,7 @@ export function DictionaryManagement() {
                 <input
                   value={itemDesc}
                   onChange={(e) => setItemDesc(e.target.value)}
+                  autoComplete="off"
                   className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
                 />
               </div>
