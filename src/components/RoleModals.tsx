@@ -329,9 +329,9 @@ export function RoleMemberModal({ onClose, role }: BaseModalProps & { role?: Rol
 }
 
 export function RolePermissionModal({ onClose, role }: BaseModalProps & { role?: Role }) {
-  const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(new Set());
+  const [selectedPermissions, setSelectedPermissions] = useState<Set<number>>(new Set());
 
-  const togglePermission = (permissionId: string) => {
+  const togglePermission = (permissionId: number) => {
     const newSelected = new Set(selectedPermissions);
     if (newSelected.has(permissionId)) {
       newSelected.delete(permissionId);
@@ -371,8 +371,8 @@ export function RolePermissionModal({ onClose, role }: BaseModalProps & { role?:
                   className="rounded border-gray-300 text-blue-500 focus:ring-blue-500 mr-3"
                 />
                 <div className="flex-1">
-                  <div className="font-medium text-gray-800">{permission.name}</div>
-                  <div className="text-sm text-gray-500">{permission.description}</div>
+                  <div className="font-medium text-gray-800">{permission.permName}</div>
+                  <div className="text-sm text-gray-500">{permission.remark || permission.permCode}</div>
                 </div>
               </div>
             ))}

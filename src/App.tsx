@@ -3,28 +3,42 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { RoleList } from './components/RoleList';
 import { RoleDetail } from './components/RoleDetail';
 import { UserList } from './components/UserList';
 import { UserDetail } from './components/UserDetail';
-import { PermissionList } from './components/PermissionList';
+import { PermissionManagement, PermissionModalWrapper } from './components/PermissionManagement';
 import { LogList } from './components/LogList';
 import { CreateRoleModal, EditRoleModal, RoleMemberModal, RolePermissionModal } from './components/RoleModals';
 import { CreateUserModal, EditUserModal, SelectRoleModal, UserPermissionModal, ResetPasswordModal } from './components/UserModals';
-import { PermissionModal } from './components/PermissionModals';
 import { DictionaryManagement } from './components/DictionaryManagement';
 import { Auth } from './components/Auth';
 import { ModalState, Role, User, Permission } from './types';
-import { mockPermissions, mockLogs } from './data';
+import { mockLogs } from './data';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { permissionAPI } from './api/permissionApi';
 
 function MainApp() {
   const { isAuthenticated, user, logout, loading } = useAuth();
   const [modalState, setModalState] = useState<ModalState>({ type: 'none' });
   const [refreshKey, setRefreshKey] = useState(0);
+  const [allPermissions, setAllPermissions] = useState<Permission[]>([]);
+
+  // 加载所有权限（用于选择父级）
+  useEffect(() => {
+    const loadAllPermissions = async () => {
+      try {
+        const data = await permissionAPI.getPermissionTree();
+        setAllPermissions(data);
+      } catch (err) {
+        console.error('加载权限列表失败:', err);
+      }
+    };
+    loadAllPermissions();
+  }, [refreshKey]);
 
   if (loading) {
     return (
@@ -44,6 +58,8 @@ function MainApp() {
   const handleOpenModal = (type: ModalState['type'], data?: Role | User | Permission) => {
     if (type === 'none' || type === 'createRole' || type === 'createUser' || type === 'createPermission') {
       setModalState({ type } as ModalState);
+    } else if (type === 'createChildPermission' && data) {
+      setModalState({ type, parent: data as Permission } as ModalState);
     } else if (type === 'editUser' && data) {
       setModalState({ type, user: data as User } as ModalState);
     } else if ((type === 'selectRole' || type === 'userPermission' || type === 'resetPassword') && data) {
@@ -59,8 +75,8 @@ function MainApp() {
     const currentType = modalState.type;
     setModalState({ type: 'none' });
 
-    // 只有在明确需要刷新时才刷新列表（如创建、编辑成功后）
-    if (shouldRefresh === true && ['createRole', 'editRole', 'roleMember', 'rolePermission', 'createUser', 'editUser', 'selectRole', 'userPermission', 'resetPassword'].includes(currentType)) {
+    // 只有在明确需要刷新时才刷新列表
+    if (shouldRefresh === true && ['createRole', 'editRole', 'roleMember', 'rolePermission', 'createUser', 'editUser', 'selectRole', 'userPermission', 'resetPassword', 'createPermission', 'editPermission', 'createChildPermission'].includes(currentType)) {
       setRefreshKey(prev => prev + 1);
     }
   };
@@ -84,7 +100,16 @@ function MainApp() {
           <Route path="/roles/:id" element={<RoleDetail refreshKey={refreshKey} openModal={handleOpenModal} />} />
           <Route path="/users" element={<UserList refreshKey={refreshKey} openModal={handleOpenModal} />} />
           <Route path="/users/:id" element={<UserDetail refreshKey={refreshKey} openModal={handleOpenModal} />} />
-          <Route path="/permissions" element={<PermissionList permissions={mockPermissions} openModal={handleOpenModal} />} />
+          <Route
+            path="/permissions"
+            element={
+              <PermissionManagement
+                refreshKey={refreshKey}
+                openModal={handleOpenModal}
+                openChildModal={handleOpenModal}
+              />
+            }
+          />
           <Route path="/logs" element={<LogList logs={mockLogs} />} />
           <Route path="/dictionaries" element={<DictionaryManagement />} />
           <Route path="*" element={<Navigate to="/roles" replace />} />
@@ -100,8 +125,15 @@ function MainApp() {
       {modalState.type === 'selectRole' && <SelectRoleModal onClose={handleCloseModal} user={modalState.user} />}
       {modalState.type === 'userPermission' && <UserPermissionModal onClose={handleCloseModal} user={modalState.user} />}
       {modalState.type === 'resetPassword' && <ResetPasswordModal onClose={handleCloseModal} user={modalState.user} />}
-      {modalState.type === 'createPermission' && <PermissionModal onClose={handleCloseModal} />}
-      {modalState.type === 'editPermission' && <PermissionModal onClose={handleCloseModal} permission={modalState.permission} />}
+      {modalState.type === 'createPermission' && (
+        <PermissionModalWrapper onClose={handleCloseModal} allPermissions={allPermissions} />
+      )}
+      {modalState.type === 'editPermission' && (
+        <PermissionModalWrapper onClose={handleCloseModal} permission={modalState.permission} allPermissions={allPermissions} />
+      )}
+      {modalState.type === 'createChildPermission' && (
+        <PermissionModalWrapper onClose={handleCloseModal} parentPermission={modalState.parent} allPermissions={allPermissions} />
+      )}
     </div>
   );
 }

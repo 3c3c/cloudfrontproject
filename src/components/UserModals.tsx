@@ -772,10 +772,10 @@ export function UserPermissionModal({ onClose, user }: UserPermissionModalProps)
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {mockPermissions.map((permission, i) => (
-                  <tr key={permission.id} className={`transition-colors ${permission.name === 'system1-msg-readaccess' ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                    <td className="p-3 text-center"><input type="checkbox" defaultChecked={permission.name === 'system1-msg-readaccess'} className="rounded border-gray-300 text-blue-500 focus:ring-blue-500 w-4 h-4 cursor-pointer" /></td>
-                    <td className={`p-3 text-center ${permission.name === 'system1-msg-readaccess' ? 'text-blue-500' : 'text-gray-700'}`}>{permission.name}</td>
-                    <td className="p-3 text-center text-gray-700">{permission.description}</td>
+                  <tr key={permission.id} className="transition-colors hover:bg-gray-50">
+                    <td className="p-3 text-center"><input type="checkbox" defaultChecked={permission.id === 1} className="rounded border-gray-300 text-blue-500 focus:ring-blue-500 w-4 h-4 cursor-pointer" /></td>
+                    <td className={`p-3 text-center ${permission.id === 1 ? 'text-blue-500' : 'text-gray-700'}`}>{permission.permName}</td>
+                    <td className="p-3 text-center text-gray-700">{permission.remark || permission.permCode}</td>
                   </tr>
                 ))}
               </tbody>

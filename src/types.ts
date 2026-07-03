@@ -38,9 +38,20 @@ export interface AuthUser {
 }
 
 export interface Permission {
-  id: string;
-  name: string;
-  description: string;
+  id: number;
+  permCode: string;
+  permName: string;
+  type: number; // 1=目录，2=菜单，3=按钮
+  parentId: number;
+  icon?: string;
+  path?: string;
+  component?: string;
+  visible: number; // 0=隐藏，1=显示
+  serviceCode?: string;
+  enabled: number; // 0=禁用，1=启用
+  sort: number;
+  remark?: string;
+  children?: Permission[];
 }
 
 export interface Log {
@@ -81,7 +92,7 @@ export type ViewState =
   | { type: 'logs' }
   | { type: 'dictionaries' };
 
-export type ModalState = 
+export type ModalState =
   | { type: 'none' }
   | { type: 'createRole' }
   | { type: 'editRole'; role: Role }
@@ -93,4 +104,5 @@ export type ModalState =
   | { type: 'userPermission'; user?: User }
   | { type: 'resetPassword'; user: User }
   | { type: 'createPermission' }
-  | { type: 'editPermission'; permission: Permission };
+  | { type: 'editPermission'; permission: Permission }
+  | { type: 'createChildPermission'; parent: Permission };

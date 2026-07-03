@@ -28,7 +28,10 @@ interface ApiResponse<T = any> {
  * 构建 URL（包含查询参数）
  */
 function buildUrl(baseUrl: string, path: string, params?: Record<string, string | number>): string {
-  const url = new URL(path, baseUrl);
+  // 构建完整的 URL
+  const fullPath = baseUrl + path;
+  const url = new URL(fullPath, window.location.origin);
+
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
