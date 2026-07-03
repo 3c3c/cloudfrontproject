@@ -1,38 +1,89 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, RefreshCw, CheckSquare } from 'lucide-react';
 import { User } from '../types';
 import { roleAPI, type RoleResponse } from '../api/roleApi';
-import { userAPI } from '../api/userApi';
+import { userAPI, type UserResponse } from '../api/userApi';
 import { ConfirmModal } from './ConfirmModal';
 import { toast } from '../utils/toastHelpers';
 
 interface UserDetailProps {
-  user: User;
   refreshKey?: number;
-  onBack: () => void;
   openModal: (type: 'editUser' | 'selectRole' | 'userPermission' | 'resetPassword', user: User) => void;
 }
 
-export function UserDetail({ user, onBack, openModal, refreshKey }: UserDetailProps) {
+// UserResponse(API) → User(前端) 映射
+function mapUser(u: UserResponse): User {
+  return {
+    id: u.id,
+    account: u.username,
+    username: u.username,
+    name: u.nickname,
+    nickname: u.nickname,
+    status: u.enabled === 1,
+    phone: u.mobile,
+    mobile: u.mobile,
+    email: u.email,
+    avatar: u.avatar,
+    createTime: u.createTime,
+    updateTime: u.updateTime,
+    createdBy: u.createdBy,
+    updatedBy: u.updatedBy,
+  };
+}
+
+export function UserDetail({ refreshKey, openModal }: UserDetailProps) {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'roles' | 'permissions'>('roles');
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<RoleResponse[]>([]);
   const [keyword, setKeyword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [rolesLoading, setRolesLoading] = useState(false);
   const [pendingDeleteRole, setPendingDeleteRole] = useState<RoleResponse | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [enabled, setEnabled] = useState<boolean>(!!user.status);
+  const [enabled, setEnabled] = useState(false);
+
+  // 按 URL 的 id 加载用户详情
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        const data = await userAPI.getUserById(Number(id));
+        if (!cancelled) {
+          const u = mapUser(data);
+          setUser(u);
+          setEnabled(u.status);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          toast.error(err instanceof Error ? err.message : '加载用户详情失败', 5000);
+          navigate('/users');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, navigate]);
 
   // 加载用户已拥有的角色列表
   const loadRoles = async (kw?: string) => {
+    if (!user) return;
     try {
-      setLoading(true);
+      setRolesLoading(true);
       const data = await roleAPI.getRolesByUserId(user.id, kw);
       setRoles(data);
     } catch (error) {
       console.error('加载用户角色列表失败:', error);
       setRoles([]);
     } finally {
-      setLoading(false);
+      setRolesLoading(false);
     }
   };
 
@@ -47,7 +98,7 @@ export function UserDetail({ user, onBack, openModal, refreshKey }: UserDetailPr
   };
 
   const confirmDeleteRole = async () => {
-    if (!pendingDeleteRole) return;
+    if (!pendingDeleteRole || !user) return;
     try {
       await roleAPI.deleteUserRoles(user.id, [pendingDeleteRole.id]);
       toast.success(`角色"${pendingDeleteRole.roleCode}"已删除`, 3000);
@@ -61,6 +112,7 @@ export function UserDetail({ user, onBack, openModal, refreshKey }: UserDetailPr
 
   // 切换用户启用/禁用状态
   const handleToggleStatus = async () => {
+    if (!user) return;
     const next = !enabled;
     try {
       await userAPI.updateUserStatus(user.id, next ? 1 : 0);
@@ -71,10 +123,21 @@ export function UserDetail({ user, onBack, openModal, refreshKey }: UserDetailPr
     }
   };
 
+  // 用户就绪后加载角色（refreshKey 变化时也重新加载）
   useEffect(() => {
-    loadRoles(keyword || undefined);
+    if (user) loadRoles(keyword || undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user.id, refreshKey]);
+  }, [user, refreshKey]);
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  if (!user) return null;
 
   return (
     <div className="flex-1 flex flex-col bg-white overflow-hidden h-full">
@@ -83,7 +146,7 @@ export function UserDetail({ user, onBack, openModal, refreshKey }: UserDetailPr
           用户管理 / <span className="text-gray-500">{user.account}</span>
         </div>
         <div className="flex items-center text-xl font-bold text-gray-800">
-          <button onClick={onBack} className="mr-3 text-gray-500 hover:text-blue-500 transition-colors">
+          <button onClick={() => navigate('/users')} className="mr-3 text-gray-500 hover:text-blue-500 transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
           {user.account}
@@ -139,13 +202,13 @@ export function UserDetail({ user, onBack, openModal, refreshKey }: UserDetailPr
 
       <section className="px-8 mt-2 shrink-0">
         <div className="flex border-b border-gray-200">
-          <button 
+          <button
             onClick={() => setActiveTab('roles')}
             className={`px-8 py-2.5 text-sm font-medium transition-colors rounded-t-md ${activeTab === 'roles' ? 'bg-blue-500 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border-r border-t border-gray-200'}`}
           >
             角色管理
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('permissions')}
             className={`px-8 py-2.5 text-sm font-medium transition-colors rounded-t-md ${activeTab === 'permissions' ? 'bg-blue-500 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border-r border-t border-gray-200'}`}
           >
@@ -156,7 +219,7 @@ export function UserDetail({ user, onBack, openModal, refreshKey }: UserDetailPr
 
       <section className="px-8 py-4 flex items-center justify-between shrink-0">
         <div className="flex items-center space-x-4">
-          <button 
+          <button
             onClick={() => openModal(activeTab === 'roles' ? 'selectRole' : 'userPermission', user)}
             className="flex items-center px-4 py-2 bg-blue-500 text-white rounded shadow-sm hover:bg-blue-600 transition-colors text-sm"
           >
@@ -198,7 +261,7 @@ export function UserDetail({ user, onBack, openModal, refreshKey }: UserDetailPr
             </tr>
           </thead>
           <tbody className="text-gray-700">
-            {loading ? (
+            {rolesLoading ? (
               <tr>
                 <td colSpan={3} className="px-6 py-3.5 text-center text-gray-400">加载中...</td>
               </tr>

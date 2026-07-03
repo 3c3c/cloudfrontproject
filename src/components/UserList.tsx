@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search, RefreshCw, CheckCircle2, Ban, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { User } from '../types';
 import { userAPI } from '../api/userApi';
@@ -7,11 +8,11 @@ import { ConfirmModal } from './ConfirmModal';
 
 interface UserListProps {
   refreshKey?: number;
-  onViewDetail: (user: User) => void;
   openModal: (type: 'createUser', user?: User) => void;
 }
 
-export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps) {
+export function UserList({ refreshKey, openModal }: UserListProps) {
+  const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<Set<number>>(new Set());
   const [keyword, setKeyword] = useState('');
@@ -358,7 +359,7 @@ export function UserList({ refreshKey, onViewDetail, openModal }: UserListProps)
                 users.map((user) => (
                   <tr
                     key={user.id}
-                    onClick={() => onViewDetail(user)}
+                    onClick={() => navigate(`/users/${user.id}`)}
                     className="hover:bg-blue-50/50 transition-colors cursor-pointer"
                   >
                     <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>

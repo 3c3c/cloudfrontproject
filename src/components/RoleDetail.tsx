@@ -1,21 +1,57 @@
 /**
  * 角色详情组件
- * 显示角色详细信息、成员和权限
+ * 显示角色详细信息与权限（按 URL 的 id 加载）
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, PlusSquare, Search, X, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Role } from '../types';
-import { mockUsers } from '../data';
+import { roleAPI } from '../api/roleApi';
+import { toast } from '../utils/toastHelpers';
 
 interface RoleDetailProps {
-  role: Role;
-  onBack: () => void;
+  refreshKey?: number;
   openModal: (type: 'editRole' | 'roleMember' | 'rolePermission', role?: Role) => void;
 }
 
-export function RoleDetail({ role, onBack, openModal }: RoleDetailProps) {
-  const [activeTab, setActiveTab] = useState<'users' | 'permissions'>('users');
+export function RoleDetail({ refreshKey, openModal }: RoleDetailProps) {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [role, setRole] = useState<Role | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        const data = await roleAPI.getRoleById(Number(id));
+        if (!cancelled) setRole(data);
+      } catch (err) {
+        if (!cancelled) {
+          toast.error(err instanceof Error ? err.message : '加载角色详情失败', 5000);
+          navigate('/roles');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, refreshKey, navigate]);
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  if (!role) return null;
 
   return (
     <div className="flex-1 flex flex-col bg-white overflow-hidden h-full">
@@ -24,7 +60,7 @@ export function RoleDetail({ role, onBack, openModal }: RoleDetailProps) {
           角色管理 / <span className="text-gray-500">{role.roleName}</span>
         </div>
         <div className="flex items-center text-xl font-bold text-gray-800">
-          <button onClick={onBack} className="mr-3 text-gray-500 hover:text-blue-500 transition-colors">
+          <button onClick={() => navigate('/roles')} className="mr-3 text-gray-500 hover:text-blue-500 transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
           {role.roleName}
@@ -72,16 +108,7 @@ export function RoleDetail({ role, onBack, openModal }: RoleDetailProps) {
 
       <section className="px-8 mt-2 shrink-0">
         <div className="flex border-b border-gray-200">
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`px-8 py-2.5 text-sm font-medium transition-colors rounded-t-md ${activeTab === 'users' ? 'bg-blue-500 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border-r border-t border-gray-200'}`}
-          >
-            用户管理
-          </button>
-          <button
-            onClick={() => setActiveTab('permissions')}
-            className={`px-8 py-2.5 text-sm font-medium transition-colors rounded-t-md ${activeTab === 'permissions' ? 'bg-blue-500 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border-r border-t border-gray-200'}`}
-          >
+          <button className="px-8 py-2.5 text-sm font-medium bg-blue-500 text-white rounded-t-md">
             权限管理
           </button>
         </div>
@@ -90,16 +117,16 @@ export function RoleDetail({ role, onBack, openModal }: RoleDetailProps) {
       <section className="px-8 py-4 flex items-center justify-between shrink-0">
         <div className="flex items-center space-x-4">
           <button
-            onClick={() => openModal(activeTab === 'users' ? 'roleMember' : 'rolePermission', role)}
+            onClick={() => openModal('rolePermission', role)}
             className="flex items-center px-4 py-2 bg-blue-500 text-white rounded shadow-sm hover:bg-blue-600 transition-colors text-sm"
           >
             <PlusSquare className="w-4 h-4 mr-2" />
-            {activeTab === 'users' ? '添加成员' : '添加权限'}
+            添加权限
           </button>
           <div className="relative">
             <input
               type="text"
-              placeholder={activeTab === 'users' ? '请输入用户名称或账号' : '请输入权限名称'}
+              placeholder="请输入权限名称"
               className="w-64 pl-4 pr-10 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center text-gray-400 space-x-1">
@@ -118,33 +145,17 @@ export function RoleDetail({ role, onBack, openModal }: RoleDetailProps) {
         <table className="w-full text-left text-sm border-collapse">
           <thead className="bg-gray-50 text-gray-500 sticky top-0 z-10">
             <tr>
-              <th className="px-6 py-3 font-medium border-b border-gray-200 w-1/3">
-                {activeTab === 'users' ? '用户账号' : '权限名称'}
-              </th>
-              <th className="px-6 py-3 font-medium border-b border-gray-200 w-1/3">
-                {activeTab === 'users' ? '用户名称' : '权限说明'}
-              </th>
+              <th className="px-6 py-3 font-medium border-b border-gray-200 w-1/3">权限名称</th>
+              <th className="px-6 py-3 font-medium border-b border-gray-200 w-1/3">权限说明</th>
               <th className="px-6 py-3 font-medium border-b border-gray-200">操作</th>
             </tr>
           </thead>
           <tbody className="text-gray-700">
-            {activeTab === 'users' ? (
-              mockUsers.map((u, i) => (
-                <tr key={u.id} className={`transition-colors ${i === 0 ? 'bg-blue-50/50' : 'hover:bg-gray-50'}`}>
-                  <td className="px-6 py-3.5 border-b border-gray-100">{u.account}</td>
-                  <td className="px-6 py-3.5 border-b border-gray-100">{u.name}</td>
-                  <td className="px-6 py-3.5 border-b border-gray-100">
-                    <button className="text-red-500 hover:text-red-600 transition-colors text-sm">移除用户</button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
-                  暂无权限数据
-                </td>
-              </tr>
-            )}
+            <tr>
+              <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
+                暂无权限数据
+              </td>
+            </tr>
           </tbody>
         </table>
       </section>

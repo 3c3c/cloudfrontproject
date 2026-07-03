@@ -1,26 +1,33 @@
 import { useState } from 'react';
+import { NavLink } from 'react-router-dom';
 import { ShieldCheck, Users, Key, ChevronDown, Menu, LogOut, FolderLock, Settings, ScrollText, Bell, BookText } from 'lucide-react';
 import { User } from '../types';
 
 interface SidebarProps {
-  currentNav?: string;
-  onNavChange?: (nav: string) => void;
   onLogout?: () => void;
   currentUser?: User;
 }
 
-export function Sidebar({ currentNav = 'roles', onNavChange, onLogout, currentUser }: SidebarProps) {
+export function Sidebar({ onLogout, currentUser }: SidebarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   // TODO: 替换为真实未读消息数量
   const unreadCount = 5;
 
+  // 展开/收起态通用的主菜单项样式（NavLink 未加 end，详情页 /roles/:id 时父项仍高亮）
+  const mainItemClass = ({ isActive }: { isActive: boolean }) =>
+    `flex items-center ${isSidebarOpen ? 'px-6 py-3' : 'justify-center flex-col py-2.5 px-1'} transition-colors relative ${isActive ? 'bg-blue-50 text-blue-500 border-r-4 border-blue-500 font-medium' : 'text-gray-600 hover:bg-gray-50'}`;
+
+  // 收起态浮层菜单项样式
+  const popupItemClass = ({ isActive }: { isActive: boolean }) =>
+    `flex items-center px-3 py-2.5 rounded-md text-sm transition-colors ${isActive ? 'bg-blue-50 text-blue-500 font-medium' : 'text-gray-700 hover:bg-gray-50'}`;
+
   return (
     <aside className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-gray-200 flex-shrink-0 flex flex-col h-full z-10 relative transition-all duration-300 ease-in-out`}>
       <div className={`p-6 border-b border-gray-100 flex items-center ${isSidebarOpen ? 'justify-between' : 'justify-center'} h-[72px]`}>
         {isSidebarOpen && <h1 className="text-xl font-bold text-gray-800 whitespace-nowrap overflow-hidden transition-opacity duration-300">系统管理后台</h1>}
-        <button 
+        <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className="text-gray-500 hover:text-gray-700 transition-colors p-1.5 rounded-md hover:bg-gray-100 shrink-0"
           title={isSidebarOpen ? "收起菜单栏" : "展开菜单栏"}
@@ -30,7 +37,7 @@ export function Sidebar({ currentNav = 'roles', onNavChange, onLogout, currentUs
       </div>
       <nav className="flex-1 overflow-y-auto py-4 overflow-x-hidden">
         <div className="relative group/parent">
-          <button 
+          <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className={`w-full flex items-center ${isSidebarOpen ? 'justify-between px-6 py-2' : 'justify-center flex-col py-2.5 px-1'} text-base font-semibold text-gray-500 uppercase tracking-wider mb-2 hover:bg-gray-50 transition-colors cursor-pointer`}
             title={!isSidebarOpen ? "权限管理" : ""}
@@ -59,59 +66,59 @@ export function Sidebar({ currentNav = 'roles', onNavChange, onLogout, currentUs
               </div>
               <ul className="space-y-1">
                 <li>
-                  <a href="#" onClick={(e) => { e.preventDefault(); onNavChange?.('roles'); }} className={`flex items-center px-3 py-2.5 rounded-md text-sm transition-colors ${currentNav === 'roles' ? 'bg-blue-50 text-blue-500 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}>
+                  <NavLink to="/roles" className={popupItemClass}>
                     <ShieldCheck className="w-4 h-4 mr-2.5 shrink-0" />
                     <span>角色管理</span>
-                  </a>
+                  </NavLink>
                 </li>
                 <li>
-                  <a href="#" onClick={(e) => { e.preventDefault(); onNavChange?.('users'); }} className={`flex items-center px-3 py-2.5 rounded-md text-sm transition-colors ${currentNav === 'users' ? 'bg-blue-50 text-blue-500 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}>
+                  <NavLink to="/users" className={popupItemClass}>
                     <Users className="w-4 h-4 mr-2.5 shrink-0" />
                     <span>用户管理</span>
-                  </a>
+                  </NavLink>
                 </li>
                 <li>
-                  <a href="#" onClick={(e) => { e.preventDefault(); onNavChange?.('permissions'); }} className={`flex items-center px-3 py-2.5 rounded-md text-sm transition-colors ${currentNav === 'permissions' ? 'bg-blue-50 text-blue-500 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}>
+                  <NavLink to="/permissions" className={popupItemClass}>
                     <Key className="w-4 h-4 mr-2.5 shrink-0" />
                     <span>权限管理</span>
-                  </a>
+                  </NavLink>
                 </li>
               </ul>
             </div>
           )}
         </div>
-        
+
         <div className={`transition-all duration-300 ease-in-out ${isMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}>
           <ul className="space-y-1">
             <li>
-              <a href="#" onClick={(e) => { e.preventDefault(); onNavChange?.('roles'); }} className={`flex items-center ${isSidebarOpen ? 'px-6 py-3' : 'justify-center flex-col py-2.5 px-1'} transition-colors relative ${currentNav === 'roles' ? 'bg-blue-50 text-blue-500 border-r-4 border-blue-500 font-medium' : 'text-gray-600 hover:bg-gray-50'}`} title={!isSidebarOpen ? "角色管理" : ""}>
+              <NavLink to="/roles" className={mainItemClass} title={!isSidebarOpen ? "角色管理" : ""}>
                 <ShieldCheck className={`w-5 h-5 ${isSidebarOpen ? 'mr-3' : 'mb-1'} shrink-0`} />
                 {isSidebarOpen ? (
                   <span className="whitespace-nowrap">角色管理</span>
                 ) : (
                   <span className="text-[10px] scale-90 tracking-tighter text-center truncate max-w-[72px]">角色管理</span>
                 )}
-              </a>
+              </NavLink>
             </li>
             <li>
-              <a href="#" onClick={(e) => { e.preventDefault(); onNavChange?.('users'); }} className={`flex items-center ${isSidebarOpen ? 'px-6 py-3' : 'justify-center flex-col py-2.5 px-1'} transition-colors relative ${currentNav === 'users' ? 'bg-blue-50 text-blue-500 border-r-4 border-blue-500 font-medium' : 'text-gray-600 hover:bg-gray-50'}`} title={!isSidebarOpen ? "用户管理" : ""}>
+              <NavLink to="/users" className={mainItemClass} title={!isSidebarOpen ? "用户管理" : ""}>
                 <Users className={`w-5 h-5 ${isSidebarOpen ? 'mr-3' : 'mb-1'} shrink-0`} />
                 {isSidebarOpen ? (
                   <span className="whitespace-nowrap">用户管理</span>
                 ) : (
                   <span className="text-[10px] scale-90 tracking-tighter text-center truncate max-w-[72px]">用户管理</span>
                 )}
-              </a>
+              </NavLink>
             </li>
             <li>
-              <a href="#" onClick={(e) => { e.preventDefault(); onNavChange?.('permissions'); }} className={`flex items-center ${isSidebarOpen ? 'px-6 py-3' : 'justify-center flex-col py-2.5 px-1'} transition-colors relative ${currentNav === 'permissions' ? 'bg-blue-50 text-blue-500 border-r-4 border-blue-500 font-medium' : 'text-gray-600 hover:bg-gray-50'}`} title={!isSidebarOpen ? "权限管理" : ""}>
+              <NavLink to="/permissions" className={mainItemClass} title={!isSidebarOpen ? "权限管理" : ""}>
                 <Key className={`w-5 h-5 ${isSidebarOpen ? 'mr-3' : 'mb-1'} shrink-0`} />
                 {isSidebarOpen ? (
                   <span className="whitespace-nowrap">权限管理</span>
                 ) : (
                   <span className="text-[10px] scale-90 tracking-tighter text-center truncate max-w-[72px]">权限管理</span>
                 )}
-              </a>
+              </NavLink>
             </li>
           </ul>
         </div>
@@ -146,16 +153,16 @@ export function Sidebar({ currentNav = 'roles', onNavChange, onLogout, currentUs
               </div>
               <ul className="space-y-1">
                 <li>
-                  <a href="#" onClick={(e) => { e.preventDefault(); onNavChange?.('logs'); }} className={`flex items-center px-3 py-2.5 rounded-md text-sm transition-colors ${currentNav === 'logs' ? 'bg-blue-50 text-blue-500 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}>
+                  <NavLink to="/logs" className={popupItemClass}>
                     <ScrollText className="w-4 h-4 mr-2.5 shrink-0" />
                     <span>日志管理</span>
-                  </a>
+                  </NavLink>
                 </li>
                 <li>
-                  <a href="#" onClick={(e) => { e.preventDefault(); onNavChange?.('dictionaries'); }} className={`flex items-center px-3 py-2.5 rounded-md text-sm transition-colors ${currentNav === 'dictionaries' ? 'bg-blue-50 text-blue-500 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}>
+                  <NavLink to="/dictionaries" className={popupItemClass}>
                     <BookText className="w-4 h-4 mr-2.5 shrink-0" />
                     <span>字典管理</span>
-                  </a>
+                  </NavLink>
                 </li>
               </ul>
             </div>
@@ -165,24 +172,24 @@ export function Sidebar({ currentNav = 'roles', onNavChange, onLogout, currentUs
         <div className={`transition-all duration-300 ease-in-out ${isSystemMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}>
           <ul className="space-y-1">
             <li>
-              <a href="#" onClick={(e) => { e.preventDefault(); onNavChange?.('logs'); }} className={`flex items-center ${isSidebarOpen ? 'px-6 py-3' : 'justify-center flex-col py-2.5 px-1'} transition-colors relative ${currentNav === 'logs' ? 'bg-blue-50 text-blue-500 border-r-4 border-blue-500 font-medium' : 'text-gray-600 hover:bg-gray-50'}`} title={!isSidebarOpen ? "日志管理" : ""}>
+              <NavLink to="/logs" className={mainItemClass} title={!isSidebarOpen ? "日志管理" : ""}>
                 <ScrollText className={`w-5 h-5 ${isSidebarOpen ? 'mr-3' : 'mb-1'} shrink-0`} />
                 {isSidebarOpen ? (
                   <span className="whitespace-nowrap">日志管理</span>
                 ) : (
                   <span className="text-[10px] scale-90 tracking-tighter text-center truncate max-w-[72px]">日志管理</span>
                 )}
-              </a>
+              </NavLink>
             </li>
             <li>
-              <a href="#" onClick={(e) => { e.preventDefault(); onNavChange?.('dictionaries'); }} className={`flex items-center ${isSidebarOpen ? 'px-6 py-3' : 'justify-center flex-col py-2.5 px-1'} transition-colors relative ${currentNav === 'dictionaries' ? 'bg-blue-50 text-blue-500 border-r-4 border-blue-500 font-medium' : 'text-gray-600 hover:bg-gray-50'}`} title={!isSidebarOpen ? "字典管理" : ""}>
+              <NavLink to="/dictionaries" className={mainItemClass} title={!isSidebarOpen ? "字典管理" : ""}>
                 <BookText className={`w-5 h-5 ${isSidebarOpen ? 'mr-3' : 'mb-1'} shrink-0`} />
                 {isSidebarOpen ? (
                   <span className="whitespace-nowrap">字典管理</span>
                 ) : (
                   <span className="text-[10px] scale-90 tracking-tighter text-center truncate max-w-[72px]">字典管理</span>
                 )}
-              </a>
+              </NavLink>
             </li>
           </ul>
         </div>

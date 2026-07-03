@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search, RefreshCw, ChevronLeft, ChevronRight, CheckCircle2, Ban, Trash2, AlertCircle } from 'lucide-react';
 import { Role } from '../types';
 import { roleAPI } from '../api/roleApi';
@@ -12,11 +13,11 @@ import { ConfirmModal } from './ConfirmModal';
 
 interface RoleListProps {
   refreshKey?: number;
-  onViewDetail: (role: Role) => void;
   openModal: (type: 'createRole' | 'editRole' | 'roleMember' | 'rolePermission', role?: Role) => void;
 }
 
-export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps) {
+export function RoleList({ refreshKey, openModal }: RoleListProps) {
+  const navigate = useNavigate();
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -332,8 +333,12 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
                 </tr>
               ) : (
                 roles.map((role) => (
-                  <tr key={role.id} className="hover:bg-blue-50/50 transition-colors group">
-                    <td className="p-4">
+                  <tr
+                    key={role.id}
+                    onClick={() => navigate(`/roles/${role.id}`)}
+                    className="hover:bg-blue-50/50 transition-colors group cursor-pointer"
+                  >
+                    <td className="p-4" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedIds.includes(role.id)}
@@ -343,7 +348,7 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
                     </td>
                     <td className="p-4 text-center text-gray-600">{role.roleCode}</td>
                     <td className="p-4 text-center text-gray-600">{role.remark || '-'}</td>
-                    <td className="p-4">
+                    <td className="p-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-center space-x-2">
                         <span className={`${role.enabled === 1 ? 'text-blue-500' : 'text-gray-400'} text-sm`}>
                           {role.enabled === 1 ? '启用' : '禁用'}
@@ -359,7 +364,7 @@ export function RoleList({ refreshKey, onViewDetail, openModal }: RoleListProps)
                         </label>
                       </div>
                     </td>
-                    <td className="p-4">
+                    <td className="p-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-center space-x-4">
                         <button onClick={() => openModal('editRole', role)} className="text-blue-500 hover:text-blue-700 text-sm">编辑</button>
                         <button onClick={() => openModal('rolePermission', role)} className="text-emerald-500 hover:text-emerald-700 text-sm">权限设置</button>

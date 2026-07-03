@@ -4,7 +4,7 @@
  */
 
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { X, AlertTriangle, Search } from 'lucide-react';
+import { X, Search } from 'lucide-react';
 import { Role } from '../types';
 import { mockUsers, mockPermissions } from '../data';
 import { roleAPI } from '../api/roleApi';
@@ -204,13 +204,6 @@ export function EditRoleModal({ onClose, role }: BaseModalProps & { role?: Role 
     <ModalWrapper title="编辑角色" onClose={onClose} widthClass="max-w-[500px]">
       <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
         <div className="flex-1 px-6 py-6 space-y-6">
-          <div className="bg-amber-50/80 border border-amber-200/50 p-3 rounded flex items-start space-x-2">
-            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-            <p className="text-sm text-amber-700 leading-tight">
-              温馨提示：修改角色信息可能会影响已分配该角色的用户权限，请谨慎操作。
-            </p>
-          </div>
-
           {error && (
             <div className="bg-red-50 border border-red-200 p-3 rounded text-sm text-red-600">
               {error}

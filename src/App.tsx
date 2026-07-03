@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { RoleList } from './components/RoleList';
 import { RoleDetail } from './components/RoleDetail';
@@ -16,13 +17,12 @@ import { CreateUserModal, EditUserModal, SelectRoleModal, UserPermissionModal, R
 import { PermissionModal } from './components/PermissionModals';
 import { DictionaryManagement } from './components/DictionaryManagement';
 import { Auth } from './components/Auth';
-import { ViewState, ModalState, Role, User, Permission } from './types';
-import { mockRoles, mockUsers, mockPermissions, mockLogs } from './data';
+import { ModalState, Role, User, Permission } from './types';
+import { mockPermissions, mockLogs } from './data';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function MainApp() {
   const { isAuthenticated, user, logout, loading } = useAuth();
-  const [viewState, setViewState] = useState<ViewState>({ type: 'roles' });
   const [modalState, setModalState] = useState<ModalState>({ type: 'none' });
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -75,58 +75,20 @@ function MainApp() {
 
   return (
     <div className="flex h-screen w-full bg-gray-50 font-sans text-gray-800 overflow-hidden">
-      <Sidebar
-        currentNav={viewState.type === 'roleDetail' ? 'roles' : (viewState.type === 'userDetail' ? 'users' : viewState.type)}
-        onNavChange={(nav) => setViewState({ type: nav as 'roles' | 'users' | 'permissions' | 'logs' })}
-        onLogout={logout}
-        currentUser={currentUser || undefined}
-      />
+      <Sidebar onLogout={logout} currentUser={currentUser || undefined} />
 
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-        {viewState.type === 'roles' && (
-          <RoleList
-            refreshKey={refreshKey}
-            onViewDetail={(role) => setViewState({ type: 'roleDetail', role })}
-            openModal={handleOpenModal}
-          />
-        )}
-
-        {viewState.type === 'roleDetail' && (
-          <RoleDetail
-            role={viewState.role}
-            onBack={() => setViewState({ type: 'roles' })}
-            openModal={handleOpenModal}
-          />
-        )}
-
-        {viewState.type === 'users' && (
-          <UserList
-            refreshKey={refreshKey}
-            onViewDetail={(user) => setViewState({ type: 'userDetail', user })}
-            openModal={handleOpenModal}
-          />
-        )}
-
-        {viewState.type === 'userDetail' && (
-          <UserDetail
-            user={viewState.user}
-            refreshKey={refreshKey}
-            onBack={() => setViewState({ type: 'users' })}
-            openModal={handleOpenModal}
-          />
-        )}
-
-        {viewState.type === 'permissions' && (
-          <PermissionList permissions={mockPermissions} openModal={handleOpenModal} />
-        )}
-
-        {viewState.type === 'logs' && (
-          <LogList logs={mockLogs} />
-        )}
-
-        {viewState.type === 'dictionaries' && (
-          <DictionaryManagement />
-        )}
+        <Routes>
+          <Route path="/" element={<Navigate to="/roles" replace />} />
+          <Route path="/roles" element={<RoleList refreshKey={refreshKey} openModal={handleOpenModal} />} />
+          <Route path="/roles/:id" element={<RoleDetail refreshKey={refreshKey} openModal={handleOpenModal} />} />
+          <Route path="/users" element={<UserList refreshKey={refreshKey} openModal={handleOpenModal} />} />
+          <Route path="/users/:id" element={<UserDetail refreshKey={refreshKey} openModal={handleOpenModal} />} />
+          <Route path="/permissions" element={<PermissionList permissions={mockPermissions} openModal={handleOpenModal} />} />
+          <Route path="/logs" element={<LogList logs={mockLogs} />} />
+          <Route path="/dictionaries" element={<DictionaryManagement />} />
+          <Route path="*" element={<Navigate to="/roles" replace />} />
+        </Routes>
       </main>
 
       {modalState.type === 'createRole' && <CreateRoleModal onClose={handleCloseModal} />}
