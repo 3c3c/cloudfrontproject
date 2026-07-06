@@ -16,13 +16,14 @@ export interface UserRequest {
 }
 
 export interface UserResponse {
-  id: number;
+  id: string; // API返回的是字符串类型的ID
   username: string;
   nickname: string;
   mobile?: string;
   email?: string;
   avatar?: string;
   enabled: number;
+  mustChangePassword: boolean;
   createTime: string;
   updateTime: string;
   createdBy: string;
@@ -31,10 +32,10 @@ export interface UserResponse {
 
 export interface UserListResponse {
   records: UserResponse[];
-  total: number;
-  size: number;
-  current: number;
-  pages: number;
+  total: string; // API返回的是字符串类型的total
+  size: string;  // API返回的是字符串类型的size
+  current: string; // API返回的是字符串类型的current
+  pages: string;  // API返回的是字符串类型的pages
 }
 
 export interface ApiResponse<T> {
@@ -88,7 +89,7 @@ class UserAPI {
   /**
    * 根据 ID 查询用户
    */
-  async getUserById(id: number): Promise<UserResponse> {
+  async getUserById(id: string | number): Promise<UserResponse> {
     const response = await fetch(`${this.baseUrl}${USER_PREFIX}/${id}`, {
       method: 'GET',
       headers: {
@@ -138,7 +139,7 @@ class UserAPI {
   /**
    * 更新用户
    */
-  async updateUser(id: number, params: UserRequest): Promise<UserResponse> {
+  async updateUser(id: string | number, params: UserRequest): Promise<UserResponse> {
     const response = await fetch(`${this.baseUrl}${USER_PREFIX}/${id}`, {
       method: 'PUT',
       headers: {
@@ -164,7 +165,7 @@ class UserAPI {
   /**
    * 更新用户状态
    */
-  async updateUserStatus(id: number, enabled: number): Promise<void> {
+  async updateUserStatus(id: string | number, enabled: number): Promise<void> {
     const response = await fetch(`${this.baseUrl}${USER_PREFIX}/${id}/status?enabled=${enabled}`, {
       method: 'PUT',
       headers: {
@@ -186,7 +187,7 @@ class UserAPI {
   /**
    * 删除用户
    */
-  async deleteUser(id: number): Promise<void> {
+  async deleteUser(id: string | number): Promise<void> {
     const response = await fetch(`${this.baseUrl}${USER_PREFIX}/${id}`, {
       method: 'DELETE',
       headers: {
@@ -208,7 +209,7 @@ class UserAPI {
   /**
    * 批量删除用户
    */
-  async batchDeleteUsers(ids: number[]): Promise<void> {
+  async batchDeleteUsers(ids: (string | number)[]): Promise<void> {
     const response = await fetch(`${this.baseUrl}${USER_PREFIX}/batch`, {
       method: 'DELETE',
       headers: {
@@ -232,7 +233,7 @@ class UserAPI {
   /**
    * 批量更新用户状态
    */
-  async batchUpdateUserStatus(userIds: number[], enabled: number): Promise<void> {
+  async batchUpdateUserStatus(userIds: (string | number)[], enabled: number): Promise<void> {
     const response = await fetch(`${this.baseUrl}${USER_PREFIX}/batch/status`, {
       method: 'PUT',
       headers: {
@@ -259,7 +260,7 @@ class UserAPI {
    * roleIds 为该用户的最终角色集合——不在其中的原有角色将被解绑；
    * 传空数组表示解除该用户的所有角色绑定。
    */
-  async bindUserRoles(userId: number, roleIds: number[]): Promise<boolean> {
+  async bindUserRoles(userId: string | number, roleIds: number[]): Promise<boolean> {
     const response = await fetch(`${this.baseUrl}${USER_PREFIX}/roles`, {
       method: 'PUT',
       headers: {

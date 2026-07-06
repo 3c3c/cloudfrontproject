@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, RefreshCw, CheckSquare } from 'lucide-react';
 import { User } from '../types';
@@ -14,8 +14,11 @@ interface UserDetailProps {
 
 // UserResponse(API) → User(前端) 映射
 function mapUser(u: UserResponse): User {
+  if (!u) {
+    throw new Error('用户数据为空');
+  }
   return {
-    id: u.id,
+    id: String(u.id), // 确保ID是字符串类型
     account: u.username,
     username: u.username,
     name: u.nickname,
@@ -48,11 +51,14 @@ export function UserDetail({ refreshKey, openModal }: UserDetailProps) {
   // 按 URL 的 id 加载用户详情
   useEffect(() => {
     if (!id) return;
+
     let cancelled = false;
-    (async () => {
+
+    const loadUserData = async () => {
       try {
         setLoading(true);
-        const data = await userAPI.getUserById(Number(id));
+        const data = await userAPI.getUserById(id);
+
         if (!cancelled) {
           const u = mapUser(data);
           setUser(u);
@@ -61,20 +67,27 @@ export function UserDetail({ refreshKey, openModal }: UserDetailProps) {
       } catch (err) {
         if (!cancelled) {
           toast.error(err instanceof Error ? err.message : '加载用户详情失败', 5000);
-          navigate('/users');
+          setTimeout(() => {
+            navigate('/users');
+          }, 100);
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    })();
+    };
+
+    loadUserData();
+
     return () => {
       cancelled = true;
     };
-  }, [id, navigate]);
+  }, [id]); // 只依赖 id
 
   // 加载用户已拥有的角色列表
-  const loadRoles = async (kw?: string) => {
-    if (!user) return;
+  const loadRoles = useCallback(async (kw?: string) => {
+    if (!user?.id) return;
     try {
       setRolesLoading(true);
       const data = await roleAPI.getRolesByUserId(user.id, kw);
@@ -85,7 +98,7 @@ export function UserDetail({ refreshKey, openModal }: UserDetailProps) {
     } finally {
       setRolesLoading(false);
     }
-  };
+  }, [user?.id]); // 只依赖 user.id，避免整个 user 对象变化时触发
 
   const handleSearch = () => {
     loadRoles(keyword || undefined);
@@ -123,9 +136,10 @@ export function UserDetail({ refreshKey, openModal }: UserDetailProps) {
 
   // 用户就绪后加载角色（refreshKey 变化时也重新加载）
   useEffect(() => {
-    if (user) loadRoles(keyword || undefined);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, refreshKey]);
+    if (user?.id) {
+      loadRoles();
+    }
+  }, [user?.id, refreshKey, loadRoles]); // 只依赖 user.id，避免重复调用
 
   if (loading) {
     return (
@@ -163,7 +177,7 @@ export function UserDetail({ refreshKey, openModal }: UserDetailProps) {
               <img src={user.avatar} alt={user.name} className="w-24 h-24 rounded-full object-cover border border-gray-200" />
             ) : (
               <div className="w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center text-blue-500 text-3xl font-semibold border border-blue-200">
-                {user.name.charAt(0)}
+                {(user.name || user.account || 'U').charAt(0).toUpperCase()}
               </div>
             )}
           </div>

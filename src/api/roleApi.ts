@@ -14,23 +14,31 @@ export interface RoleRequest {
 }
 
 export interface RoleResponse {
-  id: number;
+  id: string; // API返回字符串类型的ID
   roleCode: string;
-  roleName: string;
   remark: string;
   enabled: number;
-  createTime: string;
-  updateTime: string;
-  createdBy: string;
-  updatedBy: string;
+  createTime?: string; // 可选字段
+  updateTime?: string; // 可选字段
+  createdBy?: string; // 可选字段
+  updatedBy?: string; // 可选字段
 }
 
 export interface RoleListResponse {
   records: RoleResponse[];
-  total: number;
-  size: number;
-  current: number;
-  pages: number;
+  total: string; // API返回字符串类型的total
+  size: string; // API返回字符串类型的size
+  current: string; // API返回字符串类型的current
+  pages: string; // API返回字符串类型的pages
+}
+
+// 权限树节点（带分配状态）
+export interface PermissionTreeNode {
+  id: number;
+  permCode: string;
+  permName: string;
+  assigned: boolean;
+  children: PermissionTreeNode[];
 }
 
 export interface ApiResponse<T> {
@@ -84,7 +92,7 @@ class RoleAPI {
   /**
    * 根据 ID 查询角色
    */
-  async getRoleById(id: number): Promise<RoleResponse> {
+  async getRoleById(id: string | number): Promise<RoleResponse> {
     const response = await fetch(`${this.baseUrl}${ROLE_PREFIX}/${id}`, {
       method: 'GET',
       headers: {
@@ -109,7 +117,7 @@ class RoleAPI {
    * 查询用户未拥有的角色（为用户分配角色时的候选列表）
    * GET /auth/roles/not-assigned?userId=&keyword=
    */
-  async getNotAssignedRoles(userId: number, keyword?: string): Promise<RoleResponse[]> {
+  async getNotAssignedRoles(userId: string | number, keyword?: string): Promise<RoleResponse[]> {
     const queryParams = new URLSearchParams();
     queryParams.append('userId', userId.toString());
     if (keyword) queryParams.append('keyword', keyword);
@@ -141,7 +149,7 @@ class RoleAPI {
    * GET /auth/roles/user/{userId}?keyword=
    * keyword 可模糊匹配角色编码或角色说明，不区分大小写
    */
-  async getRolesByUserId(userId: number, keyword?: string): Promise<RoleResponse[]> {
+  async getRolesByUserId(userId: string | number, keyword?: string): Promise<RoleResponse[]> {
     const queryParams = new URLSearchParams();
     if (keyword) queryParams.append('keyword', keyword);
 
@@ -168,12 +176,38 @@ class RoleAPI {
   }
 
   /**
+   * 根据角色ID查询权限树
+   * GET /auth/roles/{roleId}/permissions
+   * 返回完整的权限树形结构，并在每个权限节点上标注指定角色是否拥有该权限
+   */
+  async getRolePermissions(roleId: string | number): Promise<PermissionTreeNode[]> {
+    const response = await fetch(`${this.baseUrl}${ROLE_PREFIX}/${roleId}/permissions`, {
+      method: 'GET',
+      headers: {
+        'Authorization': localStorage.getItem('auth_token') || '',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || '查询角色权限树失败');
+    }
+
+    const result: ApiResponse<PermissionTreeNode[]> = await response.json();
+    if (result.code !== 200) {
+      throw new Error(result.message || '查询角色权限树失败');
+    }
+
+    return result.data;
+  }
+
+  /**
    * 批量删除用户拥有的角色（解除用户与角色的绑定关系）
    * DELETE /auth/users/{userId}/roles
    * 请求体为要删除的角色ID数组，如 [1, 2, 3]；
    * 仅删除绑定关系，不影响 sys_role 中的角色数据本身，操作幂等。
    */
-  async deleteUserRoles(userId: number, roleIds: number[]): Promise<void> {
+  async deleteUserRoles(userId: string | number, roleIds: number[]): Promise<void> {
     const response = await fetch(`${this.baseUrl}/auth/users/${userId}/roles`, {
       method: 'DELETE',
       headers: {
@@ -223,7 +257,7 @@ class RoleAPI {
   /**
    * 更新角色
    */
-  async updateRole(id: number, params: RoleRequest): Promise<RoleResponse> {
+  async updateRole(id: string | number, params: RoleRequest): Promise<RoleResponse> {
     const response = await fetch(`${this.baseUrl}${ROLE_PREFIX}/${id}`, {
       method: 'PUT',
       headers: {
@@ -249,7 +283,7 @@ class RoleAPI {
   /**
    * 更新角色状态
    */
-  async updateRoleStatus(id: number, enabled: number): Promise<void> {
+  async updateRoleStatus(id: string | number, enabled: number): Promise<void> {
     const response = await fetch(`${this.baseUrl}${ROLE_PREFIX}/${id}/status?enabled=${enabled}`, {
       method: 'PUT',
       headers: {
@@ -271,7 +305,7 @@ class RoleAPI {
   /**
    * 删除角色
    */
-  async deleteRole(id: number): Promise<void> {
+  async deleteRole(id: string | number): Promise<void> {
     const response = await fetch(`${this.baseUrl}${ROLE_PREFIX}/${id}`, {
       method: 'DELETE',
       headers: {
@@ -293,7 +327,7 @@ class RoleAPI {
   /**
    * 批量删除角色
    */
-  async batchDeleteRoles(ids: number[]): Promise<void> {
+  async batchDeleteRoles(ids: (string | number)[]): Promise<void> {
     const response = await fetch(`${this.baseUrl}${ROLE_PREFIX}/batch`, {
       method: 'DELETE',
       headers: {
@@ -317,7 +351,7 @@ class RoleAPI {
   /**
    * 批量更新角色状态
    */
-  async batchUpdateRoleStatus(ids: number[], enabled: number): Promise<void> {
+  async batchUpdateRoleStatus(ids: (string | number)[], enabled: number): Promise<void> {
     const response = await fetch(`${this.baseUrl}${ROLE_PREFIX}/batch/status`, {
       method: 'PUT',
       headers: {

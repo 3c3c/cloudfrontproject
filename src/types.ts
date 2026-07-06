@@ -1,17 +1,16 @@
 export interface Role {
-  id: number;
+  id: string; // 改为字符串类型，匹配API返回
   roleCode: string;
-  roleName: string;
   remark: string;
   enabled: number;
-  createTime: string;
-  updateTime: string;
-  createdBy: string;
-  updatedBy: string;
+  createTime?: string; // 可选字段
+  updateTime?: string; // 可选字段
+  createdBy?: string; // 可选字段
+  updatedBy?: string; // 可选字段
 }
 
 export interface User {
-  id: number;
+  id: string; // 改为字符串类型，匹配API返回
   account: string;
   username?: string;
   name: string;

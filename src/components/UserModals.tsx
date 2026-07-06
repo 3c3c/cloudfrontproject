@@ -1,6 +1,5 @@
 import { useState, useRef, type ChangeEvent, useEffect, type FormEvent } from 'react';
 import { X, Search, Upload, Eye, EyeOff } from 'lucide-react';
-import { mockPermissions } from '../data';
 import { userAPI } from '../api/userApi';
 import { roleAPI, type RoleResponse } from '../api/roleApi';
 import { encryptPassword } from '../utils/crypto';
@@ -771,13 +770,11 @@ export function UserPermissionModal({ onClose, user }: UserPermissionModalProps)
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {mockPermissions.map((permission, i) => (
-                  <tr key={permission.id} className="transition-colors hover:bg-gray-50">
-                    <td className="p-3 text-center"><input type="checkbox" defaultChecked={permission.id === 1} className="rounded border-gray-300 text-blue-500 focus:ring-blue-500 w-4 h-4 cursor-pointer" /></td>
-                    <td className={`p-3 text-center ${permission.id === 1 ? 'text-blue-500' : 'text-gray-700'}`}>{permission.permName}</td>
-                    <td className="p-3 text-center text-gray-700">{permission.remark || permission.permCode}</td>
-                  </tr>
-                ))}
+                <tr>
+                  <td colSpan={3} className="p-8 text-center text-gray-400">
+                    暂无权限数据
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>

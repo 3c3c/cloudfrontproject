@@ -6,7 +6,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { X, Search } from 'lucide-react';
 import { Role } from '../types';
-import { mockUsers, mockPermissions } from '../data';
 import { roleAPI } from '../api/roleApi';
 import { toast } from '../utils/toastHelpers';
 
@@ -304,15 +303,11 @@ export function RoleMemberModal({ onClose, role }: BaseModalProps & { role?: Rol
             </tr>
           </thead>
           <tbody className="text-gray-700">
-            {mockUsers.slice(0, 3).map((user) => (
-              <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="px-4 py-3">{user.account}</td>
-                <td className="px-4 py-3">{user.name}</td>
-                <td className="px-4 py-3">
-                  <button className="text-red-500 hover:text-red-600 text-sm">移除</button>
-                </td>
-              </tr>
-            ))}
+            <tr>
+              <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
+                暂无数据
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -358,23 +353,8 @@ export function RolePermissionModal({ onClose, role }: BaseModalProps & { role?:
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto border rounded p-4">
-          <div className="grid grid-cols-2 gap-4">
-            {mockPermissions.map((permission) => (
-              <div key={permission.id} className="flex items-center p-3 border rounded hover:bg-gray-50">
-                <input
-                  type="checkbox"
-                  checked={selectedPermissions.has(permission.id)}
-                  onChange={() => togglePermission(permission.id)}
-                  className="rounded border-gray-300 text-blue-500 focus:ring-blue-500 mr-3"
-                />
-                <div className="flex-1">
-                  <div className="font-medium text-gray-800">{permission.permName}</div>
-                  <div className="text-sm text-gray-500">{permission.remark || permission.permCode}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="flex-1 overflow-auto border rounded p-4 flex items-center justify-center text-gray-400">
+          暂无权限数据
         </div>
       </div>
 

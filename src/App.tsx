@@ -17,7 +17,7 @@ import { CreateUserModal, EditUserModal, SelectRoleModal, UserPermissionModal, R
 import { DictionaryManagement } from './components/DictionaryManagement';
 import { Auth } from './components/Auth';
 import { ModalState, Role, User } from './types';
-import { mockLogs } from './data';
+import { generateMockLogs } from './data';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function MainApp() {
@@ -89,7 +89,7 @@ function MainApp() {
               />
             }
           />
-          <Route path="/logs" element={<LogList logs={mockLogs} />} />
+          <Route path="/logs" element={<LogList logs={generateMockLogs(12)} />} />
           <Route path="/dictionaries" element={<DictionaryManagement />} />
           <Route path="*" element={<Navigate to="/roles" replace />} />
         </Routes>

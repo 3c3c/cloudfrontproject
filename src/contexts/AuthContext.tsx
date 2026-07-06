@@ -6,6 +6,8 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, ComponentType } from 'react';
 import { authAPI, LoginRequest, RegisterRequest, LoginResponse } from '../api/authApi';
+import { TOKEN_REFRESHED_EVENT, AUTH_REQUIRED_EVENT } from '../api/index';
+import { toast } from '../utils/toastHelpers';
 
 // Token 过期时间（提前5分钟刷新，单位：毫秒）
 const TOKEN_REFRESH_ADVANCE = 5 * 60 * 1000;
@@ -95,6 +97,46 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
 
     loadAuthState();
+
+    // 监听 token 刷新事件
+    const handleTokenRefreshed = (event: CustomEvent) => {
+      const { token: newToken } = event.detail;
+      console.log('收到 token 刷新事件，更新状态');
+
+      // 更新 token 状态
+      setToken(newToken);
+
+      // 更新过期时间
+      const expireTime = Date.now() + 24 * 60 * 60 * 1000;
+      localStorage.setItem('auth_token_expire', expireTime.toString());
+
+      // 设置下一次刷新定时器
+      setTimeout(() => {
+        refreshToken(newToken);
+      }, 24 * 60 * 60 * 1000 - TOKEN_REFRESH_ADVANCE);
+    };
+
+    // 监听需要重新登录事件
+    const handleAuthRequired = (event: CustomEvent) => {
+      const { message } = event.detail;
+      console.log('收到需要重新登录事件:', message);
+
+      // 清理认证状态
+      clearAuthData();
+
+      // 显示提示信息
+      toast.warning(message || '登录已过期，请重新登录', 5000);
+    };
+
+    // 添加事件监听器
+    window.addEventListener(TOKEN_REFRESHED_EVENT, handleTokenRefreshed as EventListener);
+    window.addEventListener(AUTH_REQUIRED_EVENT, handleAuthRequired as EventListener);
+
+    // 清理函数
+    return () => {
+      window.removeEventListener(TOKEN_REFRESHED_EVENT, handleTokenRefreshed as EventListener);
+      window.removeEventListener(AUTH_REQUIRED_EVENT, handleAuthRequired as EventListener);
+    };
   }, []);
 
   // 刷新 token

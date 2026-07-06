@@ -42,22 +42,28 @@ export function UserList({ refreshKey, openModal }: UserListProps) {
       });
 
       // 转换API响应数据为前端User类型
-      const transformedUsers: User[] = response.records.map(user => ({
-        id: user.id,
-        account: user.username,
-        username: user.username,
-        name: user.nickname,
-        nickname: user.nickname,
-        status: user.enabled === 1,
-        phone: user.mobile,
-        mobile: user.mobile,
-        email: user.email,
-        avatar: user.avatar,
-        createTime: user.createTime,
-        updateTime: user.updateTime,
-        createdBy: user.createdBy,
-        updatedBy: user.updatedBy,
-      }));
+      const transformedUsers: User[] = response.records
+        .filter(user => user != null) // 过滤掉 null 记录
+        .map(user => ({
+          id: user.id, // 保持字符串类型
+          account: user.username,
+          username: user.username,
+          name: user.nickname,
+          nickname: user.nickname,
+          status: user.enabled === 1,
+          phone: user.mobile,
+          mobile: user.mobile,
+          email: user.email,
+          avatar: user.avatar,
+          createTime: user.createTime,
+          updateTime: user.updateTime,
+          createdBy: user.createdBy,
+          updatedBy: user.updatedBy,
+        }));
+
+      setUsers(transformedUsers);
+      setTotal(parseInt(response.total)); // 转换字符串为数字
+      setTotalPages(parseInt(response.pages)); // 转换字符串为数字
 
       setUsers(transformedUsers);
       setTotal(response.total);

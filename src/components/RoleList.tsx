@@ -28,7 +28,7 @@ export function RoleList({ refreshKey, openModal }: RoleListProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
   const [total, setTotal] = useState(0);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
 
   // 确认弹框状态
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -54,7 +54,7 @@ export function RoleList({ refreshKey, openModal }: RoleListProps) {
       });
 
       setRoles(response.records);
-      setTotal(response.total);
+      setTotal(parseInt(response.total)); // 转换字符串为数字
     } catch (err) {
       console.error('获取角色列表失败:', err);
       const errorMessage = err instanceof Error ? err.message : '获取角色列表失败';

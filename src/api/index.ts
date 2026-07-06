@@ -4,9 +4,16 @@
  */
 
 import { useAuth } from '../contexts/AuthContext';
+import { toast } from '../utils/toastHelpers';
 
 // 使用代理模式，所有请求通过 Vite 代理到后端网关
 const API_BASE_URL = '/api';
+
+// 定义 token 刷新事件名称
+export const TOKEN_REFRESHED_EVENT = 'tokenRefreshed';
+
+// 定义需要重新登录的事件名称
+export const AUTH_REQUIRED_EVENT = 'authRequired';
 
 // API 请求配置接口
 interface RequestConfig {
@@ -111,6 +118,11 @@ export async function apiRequest<T = any>(
             // 更新 localStorage 中的 token
             localStorage.setItem('auth_token', newToken);
 
+            // 触发 token 刷新事件，通知 AuthContext 更新状态
+            window.dispatchEvent(new CustomEvent(TOKEN_REFRESHED_EVENT, {
+              detail: { token: newToken }
+            }));
+
             // 使用新的 token 重试原始请求
             requestHeaders['Authorization'] = newToken;
             const retryResponse = await fetch(url, {
@@ -130,21 +142,31 @@ export async function apiRequest<T = any>(
             return retryData.data;
           }
         } else {
-          // 刷新失败，清除认证信息并重定向
-          console.log('刷新 token 失败，清除认证信息并重定向到登录页');
+          // 刷新失败，清除认证信息并触发重新登录事件
+          console.log('刷新 token 失败，清除认证信息');
           localStorage.removeItem('auth_token');
           localStorage.removeItem('auth_token_expire');
           localStorage.removeItem('auth_user');
-          window.location.href = '/'; // 重定向到登录页
+
+          // 触发需要重新登录事件
+          window.dispatchEvent(new CustomEvent(AUTH_REQUIRED_EVENT, {
+            detail: { message: '登录已过期，请重新登录' }
+          }));
+
           throw new Error('认证已过期，请重新登录');
         }
       } catch (refreshError) {
-        // 刷新过程出错，清除认证信息并重定向
+        // 刷新过程出错，清除认证信息并触发重新登录事件
         console.error('刷新 token 出错:', refreshError);
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_token_expire');
         localStorage.removeItem('auth_user');
-        window.location.href = '/'; // 重定向到登录页
+
+        // 触发需要重新登录事件
+        window.dispatchEvent(new CustomEvent(AUTH_REQUIRED_EVENT, {
+          detail: { message: '认证已过期，请重新登录' }
+        }));
+
         throw new Error('认证已过期，请重新登录');
       }
     }
