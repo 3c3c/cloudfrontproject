@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { PermissionList } from './PermissionList';
 import { PermissionModal } from './PermissionModals';
 import { permissionAPI, PermissionRequest } from '../api/permissionApi';
+import { ConfirmModal } from './ConfirmModal';
+import { toast } from '../utils/toastHelpers';
 import type { Permission } from '../types';
 
 interface PermissionManagementProps {
@@ -18,6 +20,8 @@ export function PermissionManagement({
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [pendingDeletePermission, setPendingDeletePermission] = useState<Permission | null>(null);
 
   // 加载权限树
   const loadPermissions = async () => {
@@ -42,7 +46,6 @@ export function PermissionManagement({
   const handleCreatePermission = async (data: PermissionRequest) => {
     try {
       await permissionAPI.createPermission(data);
-      await loadPermissions();
       return true;
     } catch (err) {
       console.error('创建权限失败:', err);
@@ -54,7 +57,6 @@ export function PermissionManagement({
   const handleUpdatePermission = async (id: number, data: PermissionRequest) => {
     try {
       await permissionAPI.updatePermission(id, data);
-      await loadPermissions();
       return true;
     } catch (err) {
       console.error('更新权限失败:', err);
@@ -63,26 +65,80 @@ export function PermissionManagement({
   };
 
   // 删除权限
-  const handleDeletePermission = async (id: number) => {
-    if (!confirm('确定要删除此权限吗？')) return;
+  const handleDeletePermission = (id: number) => {
+    // 查找要删除的权限
+    const findPermission = (nodes: Permission[], targetId: number): Permission | null => {
+      for (const node of nodes) {
+        if (node.id === targetId) return node;
+        if (node.children) {
+          const found = findPermission(node.children, targetId);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
 
-    try {
-      await permissionAPI.deletePermission(id);
-      await loadPermissions();
-    } catch (err) {
-      console.error('删除权限失败:', err);
-      alert(err instanceof Error ? err.message : '删除失败');
+    const permission = findPermission(permissions, id);
+    if (permission) {
+      setPendingDeletePermission(permission);
+      setShowDeleteConfirm(true);
     }
   };
 
-  // 更新权限状态
-  const handleUpdateEnabled = async (id: number, enabled: number) => {
+  // 确认删除权限
+  const confirmDeletePermission = async () => {
+    if (!pendingDeletePermission) return;
+
     try {
-      await permissionAPI.updatePermissionEnabled(id, enabled);
+      await permissionAPI.deletePermission(pendingDeletePermission.id);
+      toast.success(`权限"${pendingDeletePermission.permName}"已删除`, 3000);
+      setShowDeleteConfirm(false);
+      setPendingDeletePermission(null);
+      // 刷新列表
       await loadPermissions();
     } catch (err) {
+      console.error('删除权限失败:', err);
+      const errorMessage = err instanceof Error ? err.message : '删除失败';
+      toast.error(errorMessage, 5000);
+      setShowDeleteConfirm(false);
+      setPendingDeletePermission(null);
+    }
+  };
+
+  // 更新权限状态（级联更新所有子节点）
+  const handleUpdateEnabled = async (id: number, enabled: number) => {
+    try {
+      // 先调用API
+      await permissionAPI.updatePermissionEnabled(id, enabled);
+
+      // API成功后更新前端显示（级联更新所有子孙节点）
+      const updateLocalState = (nodes: Permission[]): Permission[] => {
+        return nodes.map(node => {
+          // 如果是当前节点或其子孙节点，都更新状态
+          if (node.id === id) {
+            // 找到目标节点，更新它和所有子节点
+            const updateNodeAndChildren = (n: Permission): Permission => {
+              return {
+                ...n,
+                enabled,
+                children: n.children ? n.children.map(updateNodeAndChildren) : undefined,
+              };
+            };
+            return updateNodeAndChildren(node);
+          }
+
+          if (node.children) {
+            return { ...node, children: updateLocalState(node.children) };
+          }
+          return node;
+        });
+      };
+
+      setPermissions(updateLocalState(permissions));
+    } catch (err) {
       console.error('更新权限状态失败:', err);
-      alert(err instanceof Error ? err.message : '更新状态失败');
+      const errorMessage = err instanceof Error ? err.message : '更新状态失败';
+      toast.error(errorMessage, 5000);
     }
   };
 
@@ -90,10 +146,10 @@ export function PermissionManagement({
   const handleUpdateVisible = async (id: number, visible: number) => {
     try {
       await permissionAPI.updatePermissionVisible(id, visible);
-      await loadPermissions();
     } catch (err) {
       console.error('更新权限可见性失败:', err);
-      alert(err instanceof Error ? err.message : '更新可见性失败');
+      const errorMessage = err instanceof Error ? err.message : '更新可见性失败';
+      toast.error(errorMessage, 5000);
     }
   };
 
@@ -135,6 +191,30 @@ export function PermissionManagement({
         onUpdateEnabled={handleUpdateEnabled}
         onUpdateVisible={handleUpdateVisible}
       />
+
+      {/* 删除确认弹框 */}
+      {pendingDeletePermission && (
+        <ConfirmModal
+          isOpen={showDeleteConfirm}
+          title="确认删除"
+          message="确定要删除此权限吗？"
+          type="danger"
+          confirmText="删除"
+          cancelText="取消"
+          onConfirm={confirmDeletePermission}
+          onCancel={() => {
+            setShowDeleteConfirm(false);
+            setPendingDeletePermission(null);
+          }}
+          details={[
+            `权限名称：${pendingDeletePermission.permName}`,
+            `权限编码：${pendingDeletePermission.permCode}`,
+            pendingDeletePermission.children && pendingDeletePermission.children.length > 0
+              ? `⚠️ 此权限包含 ${pendingDeletePermission.children.length} 个子权限，删除后子权限将一并删除`
+              : '',
+          ].filter(Boolean)}
+        />
+      )}
     </>
   );
 }

@@ -24,6 +24,8 @@ export function PermissionList({
   const [expandedKeys, setExpandedKeys] = useState<Set<number>>(new Set());
   const [searchKeyword, setSearchKeyword] = useState('');
   const [filterType, setFilterType] = useState<number | ''>('');
+  const [selectedPermissions, setSelectedPermissions] = useState<Set<number>>(new Set());
+  const [selectAll, setSelectAll] = useState(false);
 
   // 切换展开/收起状态
   const toggleExpand = (id: number) => {
@@ -34,6 +36,55 @@ export function PermissionList({
       newExpanded.add(id);
     }
     setExpandedKeys(newExpanded);
+  };
+
+  // 递归获取所有子孙节点的ID
+  const getAllChildrenIds = (permission: Permission): number[] => {
+    const ids: number[] = [permission.id];
+    if (permission.children && permission.children.length > 0) {
+      permission.children.forEach(child => {
+        ids.push(...getAllChildrenIds(child));
+      });
+    }
+    return ids;
+  };
+
+  // 处理勾选/取消勾选权限
+  const handleTogglePermission = (permission: Permission, checked: boolean) => {
+    const newSelected = new Set(selectedPermissions);
+    const allChildrenIds = getAllChildrenIds(permission);
+
+    if (checked) {
+      // 勾选父节点，同步勾选所有子节点
+      allChildrenIds.forEach(id => newSelected.add(id));
+    } else {
+      // 取消勾选父节点，同步取消勾选所有子节点
+      allChildrenIds.forEach(id => newSelected.delete(id));
+    }
+
+    setSelectedPermissions(newSelected);
+  };
+
+  // 处理全选/取消全选
+  const handleToggleSelectAll = (checked: boolean) => {
+    setSelectAll(checked);
+    if (checked) {
+      // 勾选所有权限
+      const allIds = new Set<number>();
+      const collectIds = (nodes: Permission[]) => {
+        nodes.forEach(node => {
+          allIds.add(node.id);
+          if (node.children && node.children.length > 0) {
+            collectIds(node.children);
+          }
+        });
+      };
+      collectIds(permissions);
+      setSelectedPermissions(allIds);
+    } else {
+      // 取消勾选所有权限
+      setSelectedPermissions(new Set());
+    }
   };
 
   // 全部展开/收起
@@ -93,7 +144,12 @@ export function PermissionList({
       <React.Fragment key={permission.id}>
         <tr className="transition-colors hover:bg-blue-50">
           <td className="p-4 text-center">
-            <input type="checkbox" className="rounded border-gray-300 text-blue-500 focus:ring-blue-500 w-4 h-4 cursor-pointer" />
+            <input
+              type="checkbox"
+              checked={selectedPermissions.has(permission.id)}
+              onChange={(e) => handleTogglePermission(permission, e.target.checked)}
+              className="rounded border-gray-300 text-blue-500 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+            />
           </td>
           <td className="p-4">
             <div
@@ -140,12 +196,21 @@ export function PermissionList({
               </span>
             )}
           </td>
-          <td className="p-4 text-center">
-            {permission.enabled === 1 ? (
-              <span className="text-green-600">启用</span>
-            ) : (
-              <span className="text-red-500">禁用</span>
-            )}
+          <td className="p-4">
+            <div className="flex items-center justify-center space-x-2">
+              <span className={`${permission.enabled === 1 ? 'text-blue-500' : 'text-gray-400'} text-sm`}>
+                {permission.enabled === 1 ? '启用' : '禁用'}
+              </span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={permission.enabled === 1}
+                  onChange={() => onUpdateEnabled?.(permission.id, permission.enabled === 1 ? 0 : 1)}
+                  className="sr-only peer"
+                />
+                <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
+              </label>
+            </div>
           </td>
           <td className="p-4 text-center text-gray-700">{permission.sort}</td>
           <td className="p-4">
@@ -164,14 +229,6 @@ export function PermissionList({
               >
                 <Edit className="w-3 h-3 mr-1" /> 编辑
               </button>
-              {onUpdateEnabled && (
-                <button
-                  onClick={() => onUpdateEnabled(permission.id, permission.enabled === 1 ? 0 : 1)}
-                  className="text-orange-500 hover:text-orange-700 text-sm"
-                >
-                  {permission.enabled === 1 ? '禁用' : '启用'}
-                </button>
-              )}
               {onDelete && (
                 <button
                   onClick={() => onDelete(permission.id)}
@@ -257,7 +314,12 @@ export function PermissionList({
             <thead className="bg-gray-50 text-gray-500 border-b border-gray-200 sticky top-0 z-10">
               <tr>
                 <th className="p-4 w-16 text-center">
-                  <input type="checkbox" className="rounded border-gray-300 text-blue-500 focus:ring-blue-500 w-4 h-4 cursor-pointer" />
+                  <input
+                    type="checkbox"
+                    checked={selectAll}
+                    onChange={(e) => handleToggleSelectAll(e.target.checked)}
+                    className="rounded border-gray-300 text-blue-500 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                  />
                 </th>
                 <th className="p-4 font-medium text-left">权限名称</th>
                 <th className="p-4 font-medium text-center w-24">类型</th>
