@@ -78,7 +78,11 @@ function MainApp() {
         <Routes>
           <Route path="/" element={<Navigate to="/roles" replace />} />
           <Route path="/roles" element={<RoleList refreshKey={refreshKey} openModal={handleOpenModal} />} />
-          <Route path="/roles/:id" element={<RoleDetail refreshKey={refreshKey} openModal={handleOpenModal} />} />
+          <Route path="/roles/:id" element={<RoleDetail refreshKey={refreshKey} openModal={handleOpenModal} onRoleDataUpdate={(updatedRole) => {
+            // 本地更新角色数据，不需要重新请求服务器
+            // 通过全局方式传递给 RoleDetail
+            (window as any).updatedRoleData = updatedRole;
+          }} />} />
           <Route path="/users" element={<UserList refreshKey={refreshKey} openModal={handleOpenModal} />} />
           <Route path="/users/:id" element={<UserDetail refreshKey={refreshKey} openModal={handleOpenModal} />} />
           <Route

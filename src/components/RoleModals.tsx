@@ -3,14 +3,14 @@
  * 连接真实的角色管理 API
  */
 
-import { useState, type FormEvent, type ReactNode } from 'react';
-import { X, Search } from 'lucide-react';
+import { useState, type FormEvent, type ReactNode, useEffect } from 'react';
+import { X, Search, ChevronDown, RefreshCw } from 'lucide-react';
 import { Role } from '../types';
-import { roleAPI } from '../api/roleApi';
+import { roleAPI, PermissionTreeNode } from '../api/roleApi';
 import { toast } from '../utils/toastHelpers';
 
 interface BaseModalProps {
-  onClose: (shouldRefresh?: boolean) => void;
+  onClose: (shouldRefresh?: boolean, updatedData?: Role) => void;
 }
 
 function ModalWrapper({ children, title, onClose, widthClass = "max-w-[680px]" }: { children: ReactNode, title: string, onClose: (shouldRefresh?: boolean) => void, widthClass?: string }) {
@@ -182,12 +182,26 @@ export function EditRoleModal({ onClose, role }: BaseModalProps & { role?: Role 
 
     try {
       setLoading(true);
+
+      // 构建更新后的角色数据
+      const updatedRole: Role = {
+        ...role,
+        roleCode,
+        remark,
+        enabled: enabled ? 1 : 0,
+      };
+
+      // 调用API更新服务器
       await roleAPI.updateRole(role.id, {
         roleCode,
         remark,
         enabled: enabled ? 1 : 0,
       });
-      // 更新成功，关闭模态框（触发刷新）
+
+      // 更新成功，通过全局事件通知父组件进行本地更新
+      if ((window as any).triggerRoleUpdate) {
+        (window as any).triggerRoleUpdate(updatedRole);
+      }
       onClose(true);
     } catch (err) {
       console.error('更新角色失败:', err);
@@ -322,45 +336,431 @@ export function RoleMemberModal({ onClose, role }: BaseModalProps & { role?: Rol
 }
 
 export function RolePermissionModal({ onClose, role }: BaseModalProps & { role?: Role }) {
-  const [selectedPermissions, setSelectedPermissions] = useState<Set<number>>(new Set());
+  const [allPermissions, setAllPermissions] = useState<PermissionTreeNode[]>([]);
+  const [filteredPermissions, setFilteredPermissions] = useState<PermissionTreeNode[]>([]);
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
 
-  const togglePermission = (permissionId: number) => {
-    const newSelected = new Set(selectedPermissions);
-    if (newSelected.has(permissionId)) {
-      newSelected.delete(permissionId);
-    } else {
-      newSelected.add(permissionId);
+  // 加载所有权限树
+  useEffect(() => {
+    if (!role) return;
+
+    const loadAllPermissions = async () => {
+      try {
+        setLoading(true);
+        const data = await roleAPI.getRolePermissions(role.id);
+        setAllPermissions(data);
+        setFilteredPermissions(data);
+
+        // 默认折叠所有节点
+        setExpandedNodes(new Set());
+      } catch (err) {
+        console.error('加载权限失败:', err);
+        toast.error(err instanceof Error ? err.message : '加载权限失败', 5000);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAllPermissions();
+  }, [role]);
+
+  // 点击搜索图标时执行本地搜索
+  const handleSearch = () => {
+    if (!searchKeyword.trim()) {
+      setFilteredPermissions(allPermissions);
+      setExpandedNodes(new Set());
+      return;
     }
-    setSelectedPermissions(newSelected);
+
+    // 递归搜索权限
+    const searchNodes = (nodes: PermissionTreeNode[]): PermissionTreeNode[] => {
+      const result: PermissionTreeNode[] = [];
+
+      nodes.forEach(node => {
+        const matchesSearch = node.permName.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+                             node.permCode.toLowerCase().includes(searchKeyword.toLowerCase());
+
+        const filteredChildren = node.children && node.children.length > 0
+          ? searchNodes(node.children)
+          : [];
+
+        if (matchesSearch || filteredChildren.length > 0) {
+          result.push({
+            ...node,
+            children: filteredChildren
+          });
+        }
+      });
+
+      return result;
+    };
+
+    const filtered = searchNodes(allPermissions);
+
+    // 展开所有包含匹配结果的节点
+    const expandedIds = new Set<number>();
+    const collectExpandedIds = (nodes: PermissionTreeNode[]) => {
+      nodes.forEach(node => {
+        expandedIds.add(node.id);
+        if (node.children && node.children.length > 0) {
+          collectExpandedIds(node.children);
+        }
+      });
+    };
+    collectExpandedIds(filtered);
+    setExpandedNodes(expandedIds);
+
+    setFilteredPermissions(filtered);
+  };
+
+  // 切换节点展开状态
+  const toggleNode = (nodeId: number) => {
+    setExpandedNodes(prev => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
+      } else {
+        next.add(nodeId);
+      }
+      return next;
+    });
+  };
+
+  // 切换权限选择状态（选中父节点时自动选中所有子孙节点，取消父节点时级联取消所有子孙节点）
+  const togglePermission = (clickedNode: PermissionTreeNode) => {
+    const newState = !clickedNode.assigned;
+
+    // 递归查找包含目标节点的所有父节点路径
+    const findParentIds = (nodes: PermissionTreeNode[], targetId: number, parentIds: number[] = []): number[] => {
+      for (const node of nodes) {
+        if (node.id === targetId) {
+          return [...parentIds, node.id];
+        }
+        if (node.children && node.children.length > 0) {
+          const result = findParentIds(node.children, targetId, [...parentIds, node.id]);
+          if (result.length > 0) return result;
+        }
+      }
+      return [];
+    };
+
+    const parentPath = findParentIds(allPermissions, clickedNode.id);
+
+    // 递归选中某个节点及其所有子孙节点
+    const selectNodeAndChildren = (nodeId: number, nodes: PermissionTreeNode[]): PermissionTreeNode[] => {
+      return nodes.map(node => {
+        if (node.id === nodeId) {
+          // 找到目标节点，选中它及其所有子孙节点
+          const selectAllChildren = (n: PermissionTreeNode): PermissionTreeNode => {
+            const newChildren = n.children && n.children.length > 0
+              ? n.children.map(selectAllChildren)
+              : n.children;
+
+            return {
+              ...n,
+              assigned: true,
+              children: newChildren
+            };
+          };
+          return selectAllChildren(node);
+        }
+
+        if (node.children && node.children.length > 0) {
+          return {
+            ...node,
+            children: selectNodeAndChildren(nodeId, node.children)
+          };
+        }
+
+        return node;
+      });
+    };
+
+    // 递归取消某个节点及其所有子孙节点
+    const cancelNodeAndChildren = (nodeId: number, nodes: PermissionTreeNode[]): PermissionTreeNode[] => {
+      return nodes.map(node => {
+        if (node.id === nodeId) {
+          // 找到目标节点，取消它及其所有子孙节点
+          const cancelAllChildren = (n: PermissionTreeNode): PermissionTreeNode => {
+            const newChildren = n.children && n.children.length > 0
+              ? n.children.map(cancelAllChildren)
+              : n.children;
+
+            return {
+              ...n,
+              assigned: false,
+              children: newChildren
+            };
+          };
+          return cancelAllChildren(node);
+        }
+
+        if (node.children && node.children.length > 0) {
+          return {
+            ...node,
+            children: cancelNodeAndChildren(nodeId, node.children)
+          };
+        }
+
+        return node;
+      });
+    };
+
+    // 分步更新
+    const step1Update = (nodes: PermissionTreeNode[]): PermissionTreeNode[] => {
+      return nodes.map(node => {
+        const isInParentPath = parentPath.includes(node.id);
+        let newAssignedState = node.assigned;
+
+        if (isInParentPath) {
+          if (newState) {
+            newAssignedState = true;
+          } else {
+            if (node.id === clickedNode.id) {
+              newAssignedState = false;
+            }
+          }
+        }
+
+        return {
+          ...node,
+          assigned: newAssignedState,
+          children: node.children ? step1Update(node.children) : node.children
+        };
+      });
+    };
+
+    let afterStep1 = step1Update(allPermissions);
+    if (newState) {
+      afterStep1 = selectNodeAndChildren(clickedNode.id, afterStep1);
+    } else {
+      afterStep1 = cancelNodeAndChildren(clickedNode.id, afterStep1);
+    }
+
+    // 第三步：只检查父路径中的父节点状态
+    const step2Update = (nodes: PermissionTreeNode[]): PermissionTreeNode[] => {
+      return nodes.map(node => {
+        let updatedChildren = node.children ? step2Update(node.children) : node.children;
+
+        if (parentPath.includes(node.id) && updatedChildren && updatedChildren.length > 0) {
+          const hasSelectedDescendant = (n: PermissionTreeNode): boolean => {
+            if (n.assigned) return true;
+            if (n.children && n.children.length > 0) {
+              return n.children.some(hasSelectedDescendant);
+            }
+            return false;
+          };
+
+          const hasAnySelected = updatedChildren.some(hasSelectedDescendant);
+          if (!hasAnySelected && node.assigned) {
+            return {
+              ...node,
+              assigned: false,
+              children: updatedChildren
+            };
+          }
+        }
+
+        return {
+          ...node,
+          assigned: node.assigned,
+          children: updatedChildren
+        };
+      });
+    };
+
+    let finalPermissions = afterStep1;
+    if (!newState) {
+      finalPermissions = step2Update(afterStep1);
+    }
+
+    setAllPermissions(finalPermissions);
+
+    let afterStep1Filtered = step1Update(filteredPermissions);
+    if (newState) {
+      afterStep1Filtered = selectNodeAndChildren(clickedNode.id, afterStep1Filtered);
+    } else {
+      afterStep1Filtered = cancelNodeAndChildren(clickedNode.id, afterStep1Filtered);
+    }
+
+    let finalFiltered = afterStep1Filtered;
+    if (!newState) {
+      finalFiltered = step2Update(afterStep1Filtered);
+    }
+
+    setFilteredPermissions(finalFiltered);
+  };
+
+  // 渲染权限树节点（使用角色详情的权限树样式）
+  const renderPermissionNode = (node: PermissionTreeNode, level: number = 0): React.ReactNode => {
+    const isExpanded = expandedNodes.has(node.id);
+    const hasChildren = node.children && node.children.length > 0;
+    const indent = level * 24;
+
+    return (
+      <div key={node.id} className="permission-node">
+        <div
+          className="flex items-center py-2 hover:bg-gray-50 cursor-pointer"
+          style={{ paddingLeft: `${indent + 24}px` }}
+          onClick={() => togglePermission(node)}
+        >
+          <div className="w-6 h-6 flex items-center justify-center mr-2">
+            {hasChildren ? (
+              <ChevronDown
+                className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-0' : '-rotate-90'}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleNode(node.id);
+                }}
+              />
+            ) : (
+              <div className="w-4 h-4" />
+            )}
+          </div>
+
+          <div className="mr-3">
+            {node.assigned ? (
+              <div className="w-5 h-5 rounded bg-blue-500 flex items-center justify-center">
+                <span className="text-white text-xs">✓</span>
+              </div>
+            ) : (
+              <div className="w-5 h-5 rounded border border-gray-300" />
+            )}
+          </div>
+
+          <div className="flex-1">
+            <span className="text-sm text-gray-700">{node.permName}</span>
+            <span className="text-xs text-gray-400 ml-2">({node.permCode})</span>
+          </div>
+        </div>
+
+        {isExpanded && hasChildren && node.children.map(child => renderPermissionNode(child, level + 1))}
+      </div>
+    );
+  };
+
+  // 保存权限配置
+  const handleSave = async () => {
+    if (!role) return;
+
+    try {
+      setSaving(true);
+
+      const selectedIds: number[] = [];
+      const collectSelectedIds = (nodes: PermissionTreeNode[]) => {
+        nodes.forEach(node => {
+          if (node.assigned) {
+            selectedIds.push(node.id);
+          }
+          if (node.children && node.children.length > 0) {
+            collectSelectedIds(node.children);
+          }
+        });
+      };
+      collectSelectedIds(allPermissions);
+
+      const response = await fetch(`/api/auth/roles/${role.id}/permissions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': localStorage.getItem('auth_token') || '',
+        },
+        body: JSON.stringify({
+          permissionIds: selectedIds
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || '保存权限配置失败');
+      }
+
+      const result = await response.json();
+      if (result.code !== 200) {
+        throw new Error(result.message || '保存权限配置失败');
+      }
+
+      if ((window as any).triggerRoleUpdate) {
+        (window as any).triggerRoleUpdate({ ...role, permissions: selectedIds });
+      }
+      onClose(true);
+    } catch (err) {
+      console.error('保存权限配置失败:', err);
+      toast.error(err instanceof Error ? err.message : '保存权限配置失败', 5000);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <ModalWrapper title="角色权限配置" onClose={onClose} widthClass="max-w-[800px]">
       <div className="flex-1 flex flex-col p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <input
-            type="text"
-            placeholder="请输入权限名称"
-            className="flex-1 mr-4 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-          />
-          <div className="flex items-center space-x-2">
-            <button className="flex items-center px-4 py-2 bg-emerald-500 text-white rounded text-sm hover:bg-emerald-600 transition-colors">
-              全选
-            </button>
-            <button className="flex items-center px-4 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors">
-              保存
-            </button>
+        <div className="mb-4 flex items-center space-x-3">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              placeholder="请输入权限名称"
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center text-gray-400">
+              <button
+                onClick={handleSearch}
+                className="hover:text-gray-600 transition-colors"
+                type="button"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto border rounded p-4 flex items-center justify-center text-gray-400">
-          暂无权限数据
+        <div className="flex-1 overflow-auto border border-gray-200 rounded-lg bg-white">
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
+            </div>
+          ) : filteredPermissions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+              <Search className="w-12 h-12 mb-4 text-gray-300" />
+              <p className="text-sm">
+                {searchKeyword ? '没有找到匹配的权限' : '暂无权限数据'}
+              </p>
+            </div>
+          ) : (
+            <div className="p-4">
+              <div className="flex items-center px-6 py-3 bg-gray-50 border-b border-gray-200 text-sm font-medium text-gray-500 mb-2">
+                <div className="w-8" />
+                <div className="w-8" />
+                <div className="flex-1">权限名称</div>
+              </div>
+
+              <div className="permission-tree">
+                {filteredPermissions.map(node => renderPermissionNode(node))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="px-6 py-4 border-t border-gray-50 bg-white flex justify-end">
-        <button onClick={onClose} className="bg-white text-gray-600 border border-gray-300 px-8 py-2 rounded-sm text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm">
-          关闭
+      <div className="px-6 py-4 border-t border-gray-50 bg-white flex justify-end space-x-3">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="bg-blue-500 text-white px-8 py-2 rounded-sm text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
+          {saving ? '保存中...' : '保存'}
+        </button>
+        <button
+          onClick={() => onClose(false)}
+          disabled={saving}
+          className="bg-white text-gray-600 border border-gray-300 px-8 py-2 rounded-sm text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          取消
         </button>
       </div>
     </ModalWrapper>

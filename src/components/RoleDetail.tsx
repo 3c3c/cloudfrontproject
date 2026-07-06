@@ -13,9 +13,10 @@ import { toast } from '../utils/toastHelpers';
 interface RoleDetailProps {
   refreshKey?: number;
   openModal: (type: 'editRole' | 'roleMember' | 'rolePermission', role?: Role) => void;
+  onRoleDataUpdate?: (updatedRole: Role) => void;
 }
 
-export function RoleDetail({ refreshKey, openModal }: RoleDetailProps) {
+export function RoleDetail({ refreshKey, openModal, onRoleDataUpdate }: RoleDetailProps) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [role, setRole] = useState<Role | null>(null);
@@ -58,6 +59,34 @@ export function RoleDetail({ refreshKey, openModal }: RoleDetailProps) {
       cancelled = true;
     };
   }, [id]); // 只依赖 id
+
+  // 监听全局的角色数据更新
+  useEffect(() => {
+    const handleRoleUpdate = () => {
+      const updatedRole = (window as any).updatedRoleData;
+      if (updatedRole && role && updatedRole.id === role.id) {
+        // 是当前角色，直接更新本地数据
+        setRole(updatedRole);
+        // 清除全局数据
+        (window as any).updatedRoleData = null;
+      }
+    };
+
+    // 监听全局更新事件
+    window.addEventListener('roleUpdated', handleRoleUpdate);
+
+    return () => {
+      window.removeEventListener('roleUpdated', handleRoleUpdate);
+    };
+  }, [role]);
+
+  // 触发全局更新的函数
+  useEffect(() => {
+    (window as any).triggerRoleUpdate = (updatedRole: Role) => {
+      (window as any).updatedRoleData = updatedRole;
+      window.dispatchEvent(new Event('roleUpdated'));
+    };
+  }, []);
 
   // 加载角色权限树
   useEffect(() => {
