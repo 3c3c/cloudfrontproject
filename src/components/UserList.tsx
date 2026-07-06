@@ -113,10 +113,6 @@ export function UserList({ refreshKey, openModal }: UserListProps) {
           u.id === user.id ? { ...u, status: !u.status } : u
         )
       );
-
-      // 显示成功提示
-      const statusText = newStatus === 1 ? '启用' : '禁用';
-      toast.success(`用户"${user.name}"已${statusText}`, 2000);
     } catch (error) {
       console.error('更新用户状态失败:', error);
       const errorMessage = error instanceof Error ? error.message : '更新用户状态失败';
@@ -140,9 +136,6 @@ export function UserList({ refreshKey, openModal }: UserListProps) {
       // 只更新本地状态，不重新加载列表
       setUsers(prevUsers => prevUsers.filter(u => u.id !== userId));
       setTotal(prev => prev - 1);
-
-      // 显示成功提示
-      toast.success('用户删除成功', 2000);
     } catch (error) {
       console.error('删除用户失败:', error);
       const errorMessage = error instanceof Error ? error.message : '删除用户失败';
@@ -235,9 +228,6 @@ export function UserList({ refreshKey, openModal }: UserListProps) {
       setUsers(prevUsers => prevUsers.filter(u => !selectedUsers.has(u.id)));
       setSelectedUsers(new Set());
       setTotal(prev => prev - count);
-
-      // 显示成功提示
-      toast.success(`成功删除 ${count} 个用户`, 3000);
       setShowBatchDeleteConfirm(false);
     } catch (error) {
       console.error('批量删除失败:', error);

@@ -25,11 +25,30 @@ export interface PermissionRequest {
 }
 
 /**
+ * 分页参数
+ */
+export interface BasePage {
+  current?: number; // 当前页码，从1开始
+  size?: number; // 每页大小
+}
+
+/**
  * 权限查询参数
  */
-export interface PermissionQueryParams {
-  permName?: string;
+export interface PermissionQueryParams extends BasePage {
+  permName?: string; // 权限名称，支持模糊查询
   type?: number; // 1=目录，2=菜单，3=按钮
+}
+
+/**
+ * 分页结果
+ */
+export interface PageResult<T> {
+  records: T[];
+  total: number; // 第一级节点的总数
+  size: number; // 每页大小
+  current: number; // 当前页码
+  pages: number; // 总页数
 }
 
 /**
@@ -40,12 +59,18 @@ class PermissionAPI {
 
   /**
    * 查询权限树形列表
+   * @param params 查询参数，包含分页和过滤条件
+   * @returns 分页结果，records为树形数据列表，total为第一级节点总数
    */
-  async getPermissionTree(params?: PermissionQueryParams): Promise<Permission[]> {
+  async getPermissionTree(params?: PermissionQueryParams): Promise<PageResult<Permission>> {
     const queryParams: Record<string, string | number> = {};
+    // 分页参数
+    if (params?.current) queryParams.current = params.current;
+    if (params?.size) queryParams.size = params.size;
+    // 过滤参数
     if (params?.permName) queryParams.permName = params.permName;
     if (params?.type) queryParams.type = params.type;
-    return get<Permission[]>(`${this.baseUrl}/tree`, queryParams);
+    return get<PageResult<Permission>>(`${this.baseUrl}/tree`, queryParams);
   }
 
   /**

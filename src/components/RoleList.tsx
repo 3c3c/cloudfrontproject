@@ -127,8 +127,6 @@ export function RoleList({ refreshKey, openModal }: RoleListProps) {
       // 刷新列表
       await fetchRoles();
 
-      // 显示成功提示
-      toast.success(`角色"${pendingDeleteRole.roleCode}"已删除`, 3000);
       setShowDeleteConfirm(false);
       setPendingDeleteRole(null);
     } catch (err) {
@@ -155,8 +153,6 @@ export function RoleList({ refreshKey, openModal }: RoleListProps) {
       // 刷新列表
       await fetchRoles();
 
-      // 显示成功提示
-      toast.success(`成功删除 ${selectedIds.length} 个角色`, 3000);
       setShowBatchDeleteConfirm(false);
     } catch (err) {
       console.error('批量删除角色失败:', err);
@@ -189,8 +185,6 @@ export function RoleList({ refreshKey, openModal }: RoleListProps) {
       // 刷新列表
       await fetchRoles();
 
-      // 显示成功提示
-      toast.success(`成功启用 ${count} 个角色`, 3000);
       setShowBatchEnableConfirm(false);
     } catch (err) {
       console.error('批量更新角色状态失败:', err);
@@ -209,8 +203,6 @@ export function RoleList({ refreshKey, openModal }: RoleListProps) {
       // 刷新列表
       await fetchRoles();
 
-      // 显示成功提示
-      toast.success(`成功禁用 ${count} 个角色`, 3000);
       setShowBatchDisableConfirm(false);
     } catch (err) {
       console.error('批量更新角色状态失败:', err);
@@ -417,7 +409,7 @@ export function RoleList({ refreshKey, openModal }: RoleListProps) {
                 onClick={() => handlePageChange(page)}
                 className={`px-3 py-1 rounded text-sm transition-colors ${
                   currentPage === page
-                    ? 'bg-blue-500 text-white'
+                    ? 'bg-blue-500 text-white border-0'
                     : 'border border-gray-300 text-gray-600 hover:bg-gray-50'
                 }`}
               >
@@ -431,6 +423,9 @@ export function RoleList({ refreshKey, openModal }: RoleListProps) {
             >
               <ChevronRight className="w-4 h-4" />
             </button>
+            <span className="text-xs text-gray-500 ml-2">
+              共 {total} 条，第 {currentPage}/{totalPages} 页
+            </span>
           </div>
         </div>
       </div>

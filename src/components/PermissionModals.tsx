@@ -20,12 +20,17 @@ export function PermissionModal({
   const isEdit = !!permission;
   const isChild = !!parentPermission;
 
-  // 添加子项时，如果父级是目录，默认子项为菜单；如果父级是菜单，默认子项为按钮
+  // 用于排序输入的临时状态
+  const [sortInput, setSortInput] = useState<string>(() => {
+    const initialSort = permission?.sort || 0;
+    return initialSort === 0 ? '' : String(initialSort);
+  });
+
+  // 获取默认权限类型
   const getDefaultType = () => {
-    if (permission?.type) return permission.type;
-    if (parentPermission?.type === 1) return 2; // 父级是目录，默认菜单
-    if (parentPermission?.type === 2) return 3; // 父级是菜单，默认按钮
-    return 3; // 默认按钮
+    if (permission?.type) return permission.type; // 编辑时保持原类型
+    if (isChild) return 3; // 新增子项默认为按钮
+    return 1; // 新增根权限默认为目录
   };
 
   const [formData, setFormData] = useState({
@@ -37,41 +42,13 @@ export function PermissionModal({
     path: permission?.path || '',
     component: permission?.component || '',
     visible: permission?.visible ?? 1,
-    serviceCode: permission?.serviceCode || '',
     enabled: permission?.enabled ?? 1,
+    serviceCode: permission?.serviceCode || '',
     sort: permission?.sort || 0,
     remark: permission?.remark || '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // 获取可选的父级权限列表
-  const getParentOptions = () => {
-    if (isChild) return []; // 如果是添加子项，不能修改父级
-
-    const collectParents = (nodes: Permission[], level: number = 0): Array<{ id: number; name: string; level: number }> => {
-      const result: Array<{ id: number; name: string; level: number }> = [];
-      nodes.forEach(node => {
-        // 编辑时不能将自己或自己的子孙节点作为父级
-        if (permission && node.id === permission.id) return;
-
-        result.push({
-          id: node.id,
-          name: node.permName,
-          level,
-        });
-
-        if (node.children && node.children.length > 0) {
-          result.push(...collectParents(node.children, level + 1));
-        }
-      });
-      return result;
-    };
-
-    return collectParents(allPermissions);
-  };
-
-  const parentOptions = getParentOptions();
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -90,13 +67,17 @@ export function PermissionModal({
       newErrors.type = '请选择权限类型';
     }
 
-    // 菜单类型必须填写路由和组件
-    if (formData.type === 2) {
+    // 目录和菜单类型必须填写路由地址
+    if (formData.type === 1 || formData.type === 2) {
       if (!formData.path.trim()) {
         newErrors.path = '请输入路由地址';
       }
+    }
+
+    // 菜单类型必须填写组件路径
+    if (formData.type === 2) {
       if (!formData.component.trim()) {
-        newErrors.component = '请输入前端组件路径';
+        newErrors.component = '请输入组件路径';
       }
     }
 
@@ -120,10 +101,9 @@ export function PermissionModal({
         submitData.component = '';
       }
 
-      // 目录类型可以没有路由和组件
+      // 目录类型保留路由地址，但清空组件路径
       if (submitData.type === 1) {
-        if (!submitData.path) submitData.path = '';
-        if (!submitData.component) submitData.component = '';
+        submitData.component = '';
       }
 
       onSubmit(submitData);
@@ -189,8 +169,7 @@ export function PermissionModal({
                   <select
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: Number(e.target.value) })}
-                    disabled={isEdit}
-                    className={`w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all appearance-none bg-white pr-10 ${isEdit ? 'bg-gray-100 cursor-not-allowed' : ''} ${errors.type ? 'border-red-500' : ''}`}
+                    className={`w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all appearance-none bg-white pr-10 ${errors.type ? 'border-red-500' : ''}`}
                   >
                     <option value="1">目录</option>
                     <option value="2">菜单</option>
@@ -202,26 +181,6 @@ export function PermissionModal({
                 </div>
                 {errors.type && <p className="mt-1 text-xs text-red-500">{errors.type}</p>}
               </div>
-
-              {/* 父级权限 */}
-              {!isChild && (
-                <div>
-                  <label className="block mb-2 text-sm font-normal text-gray-700">父级权限</label>
-                  <select
-                    value={formData.parentId || 0}
-                    onChange={(e) => setFormData({ ...formData, parentId: Number(e.target.value) })}
-                    disabled={isEdit}
-                    className={`w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all appearance-none bg-white ${isEdit ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                  >
-                    <option value={0}>无（根节点）</option>
-                    {parentOptions.map(option => (
-                      <option key={option.id} value={option.id}>
-                        {'  '.repeat(option.level)}{option.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
 
               {/* 图标 */}
               <div>
@@ -240,14 +199,13 @@ export function PermissionModal({
               {formData.type !== 3 && (
                 <div>
                   <label className="block mb-2 text-sm font-normal text-gray-700">
-                    {formData.type === 2 && <span className="text-red-500 mr-1">*</span>}
-                    路由地址
+                    <span className="text-red-500 mr-1">*</span>路由地址
                   </label>
                   <input
                     type="text"
                     value={formData.path}
                     onChange={(e) => setFormData({ ...formData, path: e.target.value })}
-                    placeholder="如: /system/user"
+                    placeholder="如: /system"
                     className={`w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all ${errors.path ? 'border-red-500' : ''}`}
                     maxLength={200}
                   />
@@ -255,12 +213,11 @@ export function PermissionModal({
                 </div>
               )}
 
-              {/* 前端组件路径 */}
-              {formData.type !== 3 && (
+              {/* 组件路径 */}
+              {formData.type === 2 && (
                 <div>
                   <label className="block mb-2 text-sm font-normal text-gray-700">
-                    {formData.type === 2 && <span className="text-red-500 mr-1">*</span>}
-                    前端组件路径
+                    <span className="text-red-500 mr-1">*</span>组件路径
                   </label>
                   <input
                     type="text"
@@ -290,65 +247,84 @@ export function PermissionModal({
                 />
               </div>
 
-              {/* 可见性 */}
-              <div>
-                <label className="block mb-2 text-sm font-normal text-gray-700">可见性</label>
-                <div className="relative">
-                  <select
-                    value={formData.visible}
-                    onChange={(e) => setFormData({ ...formData, visible: Number(e.target.value) })}
-                    className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all appearance-none bg-white pr-10"
-                  >
-                    <option value={1}>显示</option>
-                    <option value={0}>隐藏</option>
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
-                    <ChevronDown className="w-4 h-4" />
+              {/* 状态：仅新增子项时显示 */}
+              {isChild && (
+                <>
+                  {/* 可见性 */}
+                  <div>
+                    <label className="block mb-2 text-sm font-normal text-gray-700">可见性</label>
+                    <div className="relative">
+                      <select
+                        value={formData.visible}
+                        onChange={(e) => setFormData({ ...formData, visible: Number(e.target.value) })}
+                        className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all appearance-none bg-white pr-10"
+                      >
+                        <option value={1}>显示</option>
+                        <option value={0}>隐藏</option>
+                      </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+                        <ChevronDown className="w-4 h-4" />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {/* 状态 */}
-              <div>
-                <label className="block mb-2 text-sm font-normal text-gray-700">状态</label>
-                <div className="relative">
-                  <select
-                    value={formData.enabled}
-                    onChange={(e) => setFormData({ ...formData, enabled: Number(e.target.value) })}
-                    className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all appearance-none bg-white pr-10"
-                  >
-                    <option value={1}>启用</option>
-                    <option value={0}>禁用</option>
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
-                    <ChevronDown className="w-4 h-4" />
+                  {/* 状态 */}
+                  <div>
+                    <label className="block mb-2 text-sm font-normal text-gray-700">状态</label>
+                    <div className="relative">
+                      <select
+                        value={formData.enabled}
+                        onChange={(e) => setFormData({ ...formData, enabled: Number(e.target.value) })}
+                        className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all appearance-none bg-white pr-10"
+                      >
+                        <option value={1}>启用</option>
+                        <option value={0}>禁用</option>
+                      </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+                        <ChevronDown className="w-4 h-4" />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </>
+              )}
 
               {/* 排序 */}
               <div>
                 <label className="block mb-2 text-sm font-normal text-gray-700">排序</label>
                 <input
-                  type="number"
-                  value={formData.sort === 0 ? '' : formData.sort}
+                  type="text"
+                  inputMode="numeric"
+                  value={sortInput}
                   onChange={(e) => {
-                    const value = e.target.value;
-                    // 允许空值和有效的数字
-                    if (value === '' || !isNaN(Number(value))) {
-                      setFormData({ ...formData, sort: value === '' ? 0 : Number(value) });
+                    const rawValue = e.target.value;
+
+                    // 允许清空输入
+                    if (rawValue === '') {
+                      setSortInput('');
+                      setFormData({ ...formData, sort: 0 });
+                      return;
                     }
-                  }}
-                  onFocus={(e) => {
-                    // 聚焦时如果值为0，清空输入框
-                    if (formData.sort === 0) {
-                      e.target.value = '';
+
+                    // 移除前导零（但保留单个0）
+                    let value = rawValue;
+                    if (value.length > 1 && value.startsWith('0')) {
+                      value = value.replace(/^0+/, '');
+                      // 如果移除后为空，说明全是0，保留一个
+                      if (value === '') {
+                        value = '0';
+                      }
+                    }
+
+                    // 验证：只允许数字
+                    if (/^\d+$/.test(value)) {
+                      const num = Number(value);
+                      if (num >= 0 && num <= 9999) {
+                        setSortInput(value);
+                        setFormData({ ...formData, sort: num });
+                      }
                     }
                   }}
                   placeholder="请输入排序数字"
-                  min="0"
-                  max="9999"
-                  step="1"
                   className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all"
                 />
               </div>

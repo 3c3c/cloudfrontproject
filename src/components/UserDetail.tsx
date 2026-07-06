@@ -101,7 +101,6 @@ export function UserDetail({ refreshKey, openModal }: UserDetailProps) {
     if (!pendingDeleteRole || !user) return;
     try {
       await roleAPI.deleteUserRoles(user.id, [pendingDeleteRole.id]);
-      toast.success(`角色"${pendingDeleteRole.roleCode}"已删除`, 3000);
       setShowDeleteConfirm(false);
       setPendingDeleteRole(null);
       await loadRoles(keyword || undefined);
@@ -117,7 +116,6 @@ export function UserDetail({ refreshKey, openModal }: UserDetailProps) {
     try {
       await userAPI.updateUserStatus(user.id, next ? 1 : 0);
       setEnabled(next);
-      toast.success(`用户"${user.name}"已${next ? '启用' : '禁用'}`, 2000);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '更新用户状态失败', 5000);
     }

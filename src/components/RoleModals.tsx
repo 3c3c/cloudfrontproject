@@ -62,8 +62,7 @@ export function CreateRoleModal({ onClose }: BaseModalProps) {
         remark,
         enabled: enabled ? 1 : 0,
       });
-      // 创建成功，显示成功提示并关闭模态框（触发刷新）
-      toast.success('角色创建成功', 3000);
+      // 创建成功，关闭模态框（触发刷新）
       onClose(true);
     } catch (err) {
       console.error('创建角色失败:', err);
@@ -189,8 +188,7 @@ export function EditRoleModal({ onClose, role }: BaseModalProps & { role?: Role 
         remark,
         enabled: enabled ? 1 : 0,
       });
-      // 更新成功，显示成功提示并关闭模态框（触发刷新）
-      toast.success('角色更新成功', 3000);
+      // 更新成功，关闭模态框（触发刷新）
       onClose(true);
     } catch (err) {
       console.error('更新角色失败:', err);

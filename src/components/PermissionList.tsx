@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, RefreshCw, Plus, ChevronDown, ChevronRight, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, RefreshCw, Plus, ChevronDown, ChevronRight, ChevronLeft, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 import { Permission } from '../types';
 
 interface PermissionListProps {
@@ -10,6 +10,18 @@ interface PermissionListProps {
   onUpdateEnabled?: (id: number, enabled: number) => void;
   onUpdateVisible?: (id: number, visible: number) => void;
   onCreateChild?: (parent: Permission) => void;
+  onSearch?: (keyword: string) => void;
+  searchKeyword?: string; // 从父组件传入的搜索关键词
+  expandedKeys?: Set<number>;
+  onToggleExpand?: (id: number) => void;
+  // 分页相关
+  pagination?: {
+    current: number;
+    size: number;
+    total: number;
+    pages: number;
+  };
+  onPageChange?: (page: number, pageSize: number) => void;
 }
 
 export function PermissionList({
@@ -20,14 +32,41 @@ export function PermissionList({
   onUpdateEnabled,
   onUpdateVisible,
   onCreateChild,
+  onSearch,
+  searchKeyword: externalSearchKeyword = '',
+  expandedKeys: externalExpandedKeys,
+  onToggleExpand: externalOnToggleExpand,
+  pagination,
+  onPageChange,
 }: PermissionListProps) {
-  const [expandedKeys, setExpandedKeys] = useState<Set<number>>(new Set());
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [filterType, setFilterType] = useState<number | ''>('');
-  const [selectedPermissions, setSelectedPermissions] = useState<Set<number>>(new Set());
-  const [selectAll, setSelectAll] = useState(false);
+  // 如果外部传入了 expandedKeys，使用外部的，否则使用本地的
+  const [internalExpandedKeys, setInternalExpandedKeys] = useState<Set<number>>(new Set());
+  const expandedKeys = externalExpandedKeys ?? internalExpandedKeys;
 
-  // 切换展开/收起状态
+  // 统一的展开状态管理
+  const setExpandedKeysList = externalOnToggleExpand
+    ? (keys: Set<number>) => {
+        // 外部管理展开状态，比较新旧 Set 差异并调用 onToggleExpand
+        const currentIds = Array.from(expandedKeys);
+        const newIds = Array.from(keys);
+
+        // 需要展开的 ID（在新 Set 中但不在旧 Set 中）
+        newIds.forEach((id: number) => {
+          if (!expandedKeys.has(id)) {
+            externalOnToggleExpand(id);
+          }
+        });
+
+        // 需要折叠的 ID（在旧 Set 中但不在新 Set 中）
+        currentIds.forEach((id: number) => {
+          if (!keys.has(id)) {
+            externalOnToggleExpand(id);
+          }
+        });
+      }
+    : setInternalExpandedKeys;
+
+  // 切换单个节点的展开状态
   const toggleExpand = (id: number) => {
     const newExpanded = new Set(expandedKeys);
     if (newExpanded.has(id)) {
@@ -35,7 +74,35 @@ export function PermissionList({
     } else {
       newExpanded.add(id);
     }
-    setExpandedKeys(newExpanded);
+    setExpandedKeysList(newExpanded);
+  };
+
+  const [searchKeyword, setSearchKeyword] = useState(externalSearchKeyword);
+  const [selectedPermissions, setSelectedPermissions] = useState<Set<number>>(new Set());
+  const [selectAll, setSelectAll] = useState(false);
+
+  // 当外部 searchKeyword 变化时，同步更新本地状态
+  useEffect(() => {
+    setSearchKeyword(externalSearchKeyword);
+  }, [externalSearchKeyword]);
+
+  // 处理搜索输入（只更新本地状态）
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchKeyword(e.target.value);
+  };
+
+  // 处理搜索按钮点击（调用API）
+  const handleSearchClick = () => {
+    if (onSearch) {
+      onSearch(searchKeyword);
+    }
+  };
+
+  // 处理回车键搜索
+  const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearchClick();
+    }
   };
 
   // 递归获取所有子孙节点的ID
@@ -90,7 +157,7 @@ export function PermissionList({
   // 全部展开/收起
   const toggleExpandAll = () => {
     if (expandedKeys.size > 0) {
-      setExpandedKeys(new Set());
+      setExpandedKeysList(new Set());
     } else {
       const allIds = new Set<number>();
       const collectIds = (nodes: Permission[]) => {
@@ -102,7 +169,7 @@ export function PermissionList({
         });
       };
       collectIds(permissions);
-      setExpandedKeys(allIds);
+      setExpandedKeysList(allIds);
     }
   };
 
@@ -273,23 +340,18 @@ export function PermissionList({
                 type="text"
                 placeholder="搜索权限名称"
                 value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
+                onChange={handleSearchChange}
+                onKeyPress={handleSearchKeyPress}
                 className="w-48 pl-4 pr-10 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm transition-shadow"
               />
-              <button className="absolute right-3 top-2.5 text-gray-400">
+              <button
+                onClick={handleSearchClick}
+                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
+                type="button"
+              >
                 <Search className="w-4 h-4" />
               </button>
             </div>
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value as number | '')}
-              className="px-3 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-            >
-              <option value="">所有类型</option>
-              <option value="1">目录</option>
-              <option value="2">菜单</option>
-              <option value="3">按钮</option>
-            </select>
           </div>
         </div>
         <div className="flex space-x-2">
@@ -335,6 +397,47 @@ export function PermissionList({
             </tbody>
           </table>
         </div>
+
+        {/* 分页栏 */}
+        {pagination && pagination.pages > 0 && pagination.current > 0 && (
+          <div className="border-t border-gray-100 p-4 bg-white flex justify-end items-center shrink-0">
+            <div className="flex space-x-1 items-center">
+              <button
+                onClick={() => onPageChange?.(Math.max(1, pagination.current - 1), pagination.size)}
+                disabled={pagination.current === 1}
+                className="p-1 border border-gray-300 rounded text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              {Array.from({ length: Math.min(pagination.pages, 10) }, (_, i) => {
+                const pageNum = i + 1;
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => onPageChange?.(pageNum, pagination.size)}
+                    className={`px-3 py-1 rounded text-sm transition-colors ${
+                      pagination.current === pageNum
+                        ? 'bg-blue-500 text-white border-0'
+                        : 'border border-gray-300 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => onPageChange?.(Math.min(pagination.pages, pagination.current + 1), pagination.size)}
+                disabled={pagination.current === pagination.pages}
+                className="p-1 border border-gray-300 rounded text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <span className="text-xs text-gray-500 ml-2">
+                共 {pagination.total} 条，第 {pagination.current}/{pagination.pages} 页
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
