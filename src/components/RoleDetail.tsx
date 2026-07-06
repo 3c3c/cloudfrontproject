@@ -103,18 +103,8 @@ export function RoleDetail({ refreshKey, openModal, onRoleDataUpdate }: RoleDeta
           setPermissions(data);
           setFilteredPermissions(data);
 
-          // 默认展开所有节点
-          const allNodeIds = new Set<number>();
-          const collectNodeIds = (nodes: PermissionTreeNode[]) => {
-            nodes.forEach(node => {
-              allNodeIds.add(node.id);
-              if (node.children && node.children.length > 0) {
-                collectNodeIds(node.children);
-              }
-            });
-          };
-          collectNodeIds(data);
-          setExpandedNodes(allNodeIds);
+          // 默认折叠所有节点
+          setExpandedNodes(new Set<number>());
         }
       } catch (err) {
         console.error('加载权限失败:', err);
@@ -135,24 +125,14 @@ export function RoleDetail({ refreshKey, openModal, onRoleDataUpdate }: RoleDeta
     return () => {
       cancelled = true;
     };
-  }, [id]); // 只依赖 id
+  }, [id, refreshKey]); // 依赖 id 和 refreshKey，权限保存后会刷新
 
   // 搜索权限
-  useEffect(() => {
+  const handleSearch = () => {
     if (!searchKeyword.trim()) {
       setFilteredPermissions(permissions);
-      // 恢复所有节点展开
-      const allNodeIds = new Set<number>();
-      const collectNodeIds = (nodes: PermissionTreeNode[]) => {
-        nodes.forEach(node => {
-          allNodeIds.add(node.id);
-          if (node.children && node.children.length > 0) {
-            collectNodeIds(node.children);
-          }
-        });
-      };
-      collectNodeIds(permissions);
-      setExpandedNodes(allNodeIds);
+      // 清空搜索时，恢复到折叠状态
+      setExpandedNodes(new Set<number>());
       return;
     }
 
@@ -196,7 +176,7 @@ export function RoleDetail({ refreshKey, openModal, onRoleDataUpdate }: RoleDeta
     setExpandedNodes(expandedIds);
 
     setFilteredPermissions(filtered);
-  }, [searchKeyword, permissions]);
+  };
 
   // 切换节点展开状态
   const toggleNode = (nodeId: number) => {
@@ -397,22 +377,18 @@ export function RoleDetail({ refreshKey, openModal, onRoleDataUpdate }: RoleDeta
               placeholder="请输入权限名称"
               value={searchKeyword}
               onChange={(e) => setSearchKeyword(e.target.value)}
-              className="w-64 pl-4 pr-24 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+              className="w-64 pl-4 pr-10 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center text-gray-400">
-              {searchKeyword && (
-                <X
-                  onClick={() => setSearchKeyword('')}
-                  className="w-3 h-3 cursor-pointer hover:text-gray-600 mr-2"
-                />
-              )}
-              <div className="w-px h-3 bg-gray-300 mx-1"></div>
-              <Search className="w-4 h-4 cursor-pointer hover:text-gray-600" />
+              <button
+                onClick={handleSearch}
+                className="hover:text-gray-600 transition-colors"
+                type="button"
+              >
+                <Search className="w-4 h-4" />
+              </button>
             </div>
           </div>
-          <span className="text-sm text-gray-500">
-            找到 {filteredPermissions.length} 个权限项
-          </span>
         </div>
         <button
           onClick={() => {
