@@ -56,8 +56,9 @@ function MainApp() {
     const currentType = modalState.type;
     setModalState({ type: 'none' });
 
-    // 只有在明确需要刷新时才刷新列表（权限管理不再需要刷新）
-    if (shouldRefresh === true && ['createRole', 'editRole', 'roleMember', 'rolePermission', 'createUser', 'editUser', 'selectRole', 'userPermission', 'resetPassword'].includes(currentType)) {
+    // 只有在明确需要刷新时才刷新列表
+    // editRole 不触发刷新，通过全局事件机制更新本地数据
+    if (shouldRefresh === true && ['createRole', 'roleMember', 'rolePermission', 'createUser', 'editUser', 'selectRole', 'userPermission', 'resetPassword'].includes(currentType)) {
       setRefreshKey(prev => prev + 1);
     }
   };

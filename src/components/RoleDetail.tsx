@@ -390,24 +390,6 @@ export function RoleDetail({ refreshKey, openModal, onRoleDataUpdate }: RoleDeta
             </div>
           </div>
         </div>
-        <button
-          onClick={() => {
-            // 重新加载权限
-            if (id) {
-              roleAPI.getRolePermissions(Number(id))
-                .then(data => {
-                  setPermissions(data);
-                  setFilteredPermissions(data);
-                })
-                .catch(err => {
-                  toast.error(err instanceof Error ? err.message : '刷新权限失败', 5000);
-                });
-            }
-          }}
-          className="text-blue-500 hover:rotate-180 transition-transform duration-500"
-        >
-          <RefreshCw className={`w-5 h-5 ${loadingPermissions ? 'animate-spin' : ''}`} />
-        </button>
       </section>
 
       <section className="px-8 flex-1 overflow-auto">
