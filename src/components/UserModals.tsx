@@ -421,7 +421,23 @@ export function EditUserModal({ onClose, user }: EditUserModalProps) {
         avatar: formData.avatar || undefined,
       });
 
-      onClose(true); // 关闭弹窗并刷新列表
+      // 更新成功，通过全局事件通知父组件进行本地更新
+      if ((window as any).triggerUserUpdate) {
+        const updatedUser = {
+          id: user.id,
+          account: user.account,
+          username: user.username,
+          nickname: formData.nickname,
+          name: formData.nickname, // User类型中使用name字段
+          mobile: formData.mobile || user.mobile,
+          phone: formData.mobile || user.phone,
+          email: formData.email || user.email,
+          avatar: formData.avatar || user.avatar,
+          status: user.status,
+        };
+        (window as any).triggerUserUpdate(updatedUser);
+      }
+      onClose(true); // 关闭弹窗
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '更新用户失败', 5000);
     } finally {

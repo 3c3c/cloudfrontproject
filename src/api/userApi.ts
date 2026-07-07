@@ -1,9 +1,11 @@
 /**
  * 用户管理 API 接口
  * 基于 UserController API 文档实现
+ * 使用统一的API调用方式
  */
-// 使用代理模式，所有请求通过 Vite 代理到后端网关
-const API_BASE_URL = '/api';
+
+import { get, post, put, del } from './index';
+
 const USER_PREFIX = '/auth/users';
 
 export interface UserRequest {
@@ -38,19 +40,11 @@ export interface UserListResponse {
   pages: string;  // API返回的是字符串类型的pages
 }
 
-export interface ApiResponse<T> {
-  code: number;
-  message: string;
-  data: T;
-}
-
+/**
+ * 用户API类
+ * 使用统一的API调用函数
+ */
 class UserAPI {
-  private baseUrl: string;
-
-  constructor(baseUrl: string = API_BASE_URL) {
-    this.baseUrl = baseUrl;
-  }
-
   /**
    * 分页查询用户列表
    */
@@ -59,164 +53,58 @@ class UserAPI {
     size?: number;
     keyword?: string;
   }): Promise<UserListResponse> {
-    const queryParams = new URLSearchParams();
-    if (params?.current) queryParams.append('current', params.current.toString());
-    if (params?.size) queryParams.append('size', params.size.toString());
-    if (params?.keyword) queryParams.append('keyword', params.keyword);
-
-    const url = `${this.baseUrl}${USER_PREFIX}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': localStorage.getItem('auth_token') || '',
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || '查询用户列表失败');
-    }
-
-    const result: ApiResponse<UserListResponse> = await response.json();
-    if (result.code !== 200) {
-      throw new Error(result.message || '查询用户列表失败');
-    }
-
-    return result.data;
+    return get<UserListResponse>(USER_PREFIX, params);
   }
 
   /**
    * 根据 ID 查询用户
    */
   async getUserById(id: string | number): Promise<UserResponse> {
-    const response = await fetch(`${this.baseUrl}${USER_PREFIX}/${id}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': localStorage.getItem('auth_token') || '',
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || '查询用户失败');
-    }
-
-    const result: ApiResponse<UserResponse> = await response.json();
-    if (result.code !== 200) {
-      throw new Error(result.message || '查询用户失败');
-    }
-
-    return result.data;
+    return get<UserResponse>(`${USER_PREFIX}/${id}`);
   }
 
   /**
    * 创建用户
    */
   async createUser(params: UserRequest): Promise<UserResponse> {
-    const response = await fetch(`${this.baseUrl}${USER_PREFIX}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': localStorage.getItem('auth_token') || '',
-      },
-      body: JSON.stringify(params),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || '创建用户失败');
-    }
-
-    const result: ApiResponse<UserResponse> = await response.json();
-    if (result.code !== 200) {
-      throw new Error(result.message || '创建用户失败');
-    }
-
-    return result.data;
+    return post<UserResponse>(USER_PREFIX, params);
   }
 
   /**
    * 更新用户
    */
   async updateUser(id: string | number, params: UserRequest): Promise<UserResponse> {
-    const response = await fetch(`${this.baseUrl}${USER_PREFIX}/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': localStorage.getItem('auth_token') || '',
-      },
-      body: JSON.stringify(params),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || '更新用户失败');
-    }
-
-    const result: ApiResponse<UserResponse> = await response.json();
-    if (result.code !== 200) {
-      throw new Error(result.message || '更新用户失败');
-    }
-
-    return result.data;
+    return put<UserResponse>(`${USER_PREFIX}/${id}`, params);
   }
 
   /**
    * 更新用户状态
    */
   async updateUserStatus(id: string | number, enabled: number): Promise<void> {
-    const response = await fetch(`${this.baseUrl}${USER_PREFIX}/${id}/status?enabled=${enabled}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': localStorage.getItem('auth_token') || '',
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || '更新用户状态失败');
-    }
-
-    const result: ApiResponse<null> = await response.json();
-    if (result.code !== 200) {
-      throw new Error(result.message || '更新用户状态失败');
-    }
+    return put<void>(`${USER_PREFIX}/${id}/status`, { enabled });
   }
 
   /**
    * 删除用户
    */
   async deleteUser(id: string | number): Promise<void> {
-    const response = await fetch(`${this.baseUrl}${USER_PREFIX}/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': localStorage.getItem('auth_token') || '',
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || '删除用户失败');
-    }
-
-    const result: ApiResponse<null> = await response.json();
-    if (result.code !== 200) {
-      throw new Error(result.message || '删除用户失败');
-    }
+    return del<void>(`${USER_PREFIX}/${id}`);
   }
 
   /**
    * 批量删除用户
+   * 后端接口：@DeleteMapping("/batch") public Result<Boolean> batchDelete(@RequestBody List<Long> ids)
+   * 注意：后端期望直接接收数组，不是对象
    */
   async batchDeleteUsers(ids: (string | number)[]): Promise<void> {
-    const response = await fetch(`${this.baseUrl}${USER_PREFIX}/batch`, {
+    // 需要使用fetch直接发送，因为del函数不支持body
+    const response = await fetch(`/api${USER_PREFIX}/batch`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': localStorage.getItem('auth_token') || '',
       },
-      body: JSON.stringify(ids), // 直接发送数组，不是 { ids } 对象
+      body: JSON.stringify(ids), // 直接发送数组，不是 { ids }
     });
 
     if (!response.ok) {
@@ -224,7 +112,7 @@ class UserAPI {
       throw new Error(error.message || '批量删除用户失败');
     }
 
-    const result: ApiResponse<null> = await response.json();
+    const result = await response.json();
     if (result.code !== 200) {
       throw new Error(result.message || '批量删除用户失败');
     }
@@ -234,24 +122,7 @@ class UserAPI {
    * 批量更新用户状态
    */
   async batchUpdateUserStatus(userIds: (string | number)[], enabled: number): Promise<void> {
-    const response = await fetch(`${this.baseUrl}${USER_PREFIX}/batch/status`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': localStorage.getItem('auth_token') || '',
-      },
-      body: JSON.stringify({ userIds, enabled }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || '批量更新用户状态失败');
-    }
-
-    const result: ApiResponse<null> = await response.json();
-    if (result.code !== 200) {
-      throw new Error(result.message || '批量更新用户状态失败');
-    }
+    return put<void>(`${USER_PREFIX}/batch/status`, { userIds, enabled });
   }
 
   /**
@@ -261,26 +132,7 @@ class UserAPI {
    * 传空数组表示解除该用户的所有角色绑定。
    */
   async bindUserRoles(userId: string | number, roleIds: number[]): Promise<boolean> {
-    const response = await fetch(`${this.baseUrl}${USER_PREFIX}/roles`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': localStorage.getItem('auth_token') || '',
-      },
-      body: JSON.stringify({ userId, roleIds }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || '分配角色失败');
-    }
-
-    const result: ApiResponse<boolean> = await response.json();
-    if (result.code !== 200) {
-      throw new Error(result.message || '分配角色失败');
-    }
-
-    return result.data;
+    return put<boolean>(`${USER_PREFIX}/roles`, { userId, roleIds });
   }
 }
 

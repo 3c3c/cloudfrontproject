@@ -110,9 +110,27 @@ class PermissionAPI {
 
   /**
    * 批量删除权限
+   * DELETE /admin/permissions/batch
    */
   async batchDeletePermissions(ids: number[]): Promise<void> {
-    return del<void>(`${this.baseUrl}/batch`);
+    const response = await fetch(`${this.baseUrl}/batch`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': localStorage.getItem('auth_token') || '',
+      },
+      body: JSON.stringify(ids),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || '批量删除权限失败');
+    }
+
+    const result = await response.json();
+    if (result.code !== 200) {
+      throw new Error(result.message || '批量删除权限失败');
+    }
   }
 
   /**

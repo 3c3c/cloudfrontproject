@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, RefreshCw, CheckSquare } from 'lucide-react';
 import { User } from '../types';
@@ -10,6 +10,7 @@ import { toast } from '../utils/toastHelpers';
 interface UserDetailProps {
   refreshKey?: number;
   openModal: (type: 'editUser' | 'selectRole' | 'userPermission' | 'resetPassword', user: User) => void;
+  onUserDataUpdate?: (updatedUser: User) => void;
 }
 
 // UserResponse(API) → User(前端) 映射
@@ -35,14 +36,17 @@ function mapUser(u: UserResponse): User {
   };
 }
 
-export function UserDetail({ refreshKey, openModal }: UserDetailProps) {
+export function UserDetail({ refreshKey, openModal, onUserDataUpdate }: UserDetailProps) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'roles' | 'permissions'>('roles');
-  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
   const [roles, setRoles] = useState<RoleResponse[]>([]);
   const [keyword, setKeyword] = useState('');
+  // 用 ref 保存最新搜索词，使 loadRoles 不依赖 keyword
+  const keywordRef = useRef(keyword);
+  keywordRef.current = keyword;
   const [rolesLoading, setRolesLoading] = useState(false);
   const [pendingDeleteRole, setPendingDeleteRole] = useState<RoleResponse | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -101,7 +105,7 @@ export function UserDetail({ refreshKey, openModal }: UserDetailProps) {
   }, [user?.id]); // 只依赖 user.id，避免整个 user 对象变化时触发
 
   const handleSearch = () => {
-    loadRoles(keyword || undefined);
+    loadRoles(keywordRef.current || undefined);
   };
 
   // 删除用户角色（解除该用户与角色的绑定关系）
@@ -116,7 +120,7 @@ export function UserDetail({ refreshKey, openModal }: UserDetailProps) {
       await roleAPI.deleteUserRoles(user.id, [pendingDeleteRole.id]);
       setShowDeleteConfirm(false);
       setPendingDeleteRole(null);
-      await loadRoles(keyword || undefined);
+      await loadRoles(keywordRef.current || undefined);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '删除用户角色失败', 5000);
     }
@@ -133,6 +137,34 @@ export function UserDetail({ refreshKey, openModal }: UserDetailProps) {
       toast.error(err instanceof Error ? err.message : '更新用户状态失败', 5000);
     }
   };
+
+  // 监听全局的用户数据更新
+  useEffect(() => {
+    const handleUserUpdate = () => {
+      const updatedUserData = (window as any).updatedUserData;
+      if (updatedUserData && user && String(updatedUserData.id) === String(user.id)) {
+        // 是当前用户，直接更新本地数据
+        setUser(updatedUserData);
+        // 清除全局数据
+        (window as any).updatedUserData = null;
+      }
+    };
+
+    // 监听 global update event
+    window.addEventListener('userUpdated', handleUserUpdate);
+
+    return () => {
+      window.removeEventListener('userUpdated', handleUserUpdate);
+    };
+  }, [user]);
+
+  // 触发全局更新的函数
+  useEffect(() => {
+    (window as any).triggerUserUpdate = (updatedUser: UserResponse) => {
+      (window as any).updatedUserData = updatedUser;
+      window.dispatchEvent(new Event('userUpdated'));
+    };
+  }, []);
 
   // 用户就绪后加载角色（refreshKey 变化时也重新加载）
   useEffect(() => {
@@ -256,7 +288,7 @@ export function UserDetail({ refreshKey, openModal }: UserDetailProps) {
           </div>
         </div>
         <button
-          onClick={() => loadRoles(keyword || undefined)}
+          onClick={() => loadRoles(keywordRef.current || undefined)}
           className="text-blue-500 hover:rotate-180 transition-transform duration-500"
         >
           <RefreshCw className="w-5 h-5" />

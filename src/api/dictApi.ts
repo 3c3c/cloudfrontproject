@@ -1,13 +1,13 @@
 /**
  * 字典管理 API 接口
  * 基于 DictController API 文档实现
+ * 使用统一的API调用方式
  * 基础路径：/admin/dict
  */
 
+import { get, post, put, del } from './index';
 import { DictionaryType, DictionaryItem } from '../types';
 
-// 使用代理模式，所有请求通过 Vite 代理到后端网关
-const API_BASE_URL = '/api';
 const DICT_PREFIX = '/admin/dict';
 
 // 后端响应 DTO
@@ -35,12 +35,6 @@ interface DictDataResponse {
   dictValue: string;
   sortOrder: number;
   remark?: string;
-}
-
-interface ApiResponse<T> {
-  code: number;
-  message: string;
-  data: T;
 }
 
 // 请求体类型（使用前端字段名，内部再映射为后端字段）
@@ -123,124 +117,48 @@ function dataToBody(d: DictDataRequest) {
   };
 }
 
+/**
+ * 字典API类
+ * 使用统一的API调用函数
+ */
 class DictionaryAPI {
-  private baseUrl: string;
-
-  constructor(baseUrl: string = API_BASE_URL) {
-    this.baseUrl = baseUrl;
-  }
-
   /**
    * 查询字典类型树形结构（扁平化后返回，保留 parentId）
-   * GET /types/tree
    */
   async getTypeTree(): Promise<DictionaryType[]> {
-    const response = await fetch(`${this.baseUrl}${DICT_PREFIX}/types/tree`, {
-      method: 'GET',
-      headers: {
-        'Authorization': localStorage.getItem('auth_token') || '',
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || '查询字典类型树失败');
-    }
-
-    const result: ApiResponse<DictTypeTreeResponse[]> = await response.json();
-    if (result.code !== 200) {
-      throw new Error(result.message || '查询字典类型树失败');
-    }
-
-    return flattenTree(result.data || []);
+    const data = await get<DictTypeTreeResponse[]>(`${DICT_PREFIX}/types/tree`);
+    return flattenTree(data || []);
   }
 
   /**
    * 创建字典类型
-   * POST /types
    */
   async createType(payload: DictTypeRequest): Promise<DictionaryType> {
-    const response = await fetch(`${this.baseUrl}${DICT_PREFIX}/types`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': localStorage.getItem('auth_token') || '',
-      },
-      body: JSON.stringify(typeToBody(payload)),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || '创建字典类型失败');
-    }
-
-    const result: ApiResponse<DictTypeResponse> = await response.json();
-    if (result.code !== 200) {
-      throw new Error(result.message || '创建字典类型失败');
-    }
-
-    return mapType(result.data);
+    const data = await post<DictTypeResponse>(`${DICT_PREFIX}/types`, typeToBody(payload));
+    return mapType(data);
   }
 
   /**
    * 更新字典类型
-   * PUT /types/{id}
    */
   async updateType(id: string, payload: DictTypeRequest): Promise<DictionaryType> {
-    const response = await fetch(`${this.baseUrl}${DICT_PREFIX}/types/${Number(id)}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': localStorage.getItem('auth_token') || '',
-      },
-      body: JSON.stringify(typeToBody(payload)),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || '更新字典类型失败');
-    }
-
-    const result: ApiResponse<DictTypeResponse> = await response.json();
-    if (result.code !== 200) {
-      throw new Error(result.message || '更新字典类型失败');
-    }
-
-    return mapType(result.data);
+    const data = await put<DictTypeResponse>(`${DICT_PREFIX}/types/${Number(id)}`, typeToBody(payload));
+    return mapType(data);
   }
 
   /**
    * 更新字典类型状态（启用/禁用）
-   * PUT /types/{id}/status?status=
    */
   async updateTypeStatus(id: string, status: number): Promise<void> {
-    const response = await fetch(
-      `${this.baseUrl}${DICT_PREFIX}/types/${Number(id)}/status?status=${status}`,
-      {
-        method: 'PUT',
-        headers: {
-          'Authorization': localStorage.getItem('auth_token') || '',
-        },
-      },
-    );
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || '更新字典类型状态失败');
-    }
-
-    const result: ApiResponse<unknown> = await response.json();
-    if (result.code !== 200) {
-      throw new Error(result.message || '更新字典类型状态失败');
-    }
+    return put<void>(`${DICT_PREFIX}/types/${Number(id)}/status`, { status });
   }
 
   /**
    * 批量删除字典类型（文档未提供单删，单个删除也走 batch）
-   * DELETE /types/batch  body: [id, ...]
+   * DELETE /admin/dict/types/batch
    */
   async batchDeleteTypes(ids: string[]): Promise<void> {
-    const response = await fetch(`${this.baseUrl}${DICT_PREFIX}/types/batch`, {
+    const response = await fetch(`/api${DICT_PREFIX}/types/batch`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -254,7 +172,7 @@ class DictionaryAPI {
       throw new Error(error.message || '删除字典类型失败');
     }
 
-    const result: ApiResponse<unknown> = await response.json();
+    const result = await response.json();
     if (result.code !== 200) {
       throw new Error(result.message || '删除字典类型失败');
     }
@@ -262,92 +180,35 @@ class DictionaryAPI {
 
   /**
    * 根据字典类型编码查询该类型全部字典数据
-   * GET /data/getDictDataByCode?dictCode={code}
+   * GET /admin/dict/data/getDictDataByCode?dictCode={code}
    */
   async getDataByCode(code: string): Promise<DictionaryItem[]> {
-    const response = await fetch(
-      `${this.baseUrl}${DICT_PREFIX}/data/getDictDataByCode?dictCode=${encodeURIComponent(code)}`,
-      {
-        method: 'GET',
-        headers: {
-          'Authorization': localStorage.getItem('auth_token') || '',
-        },
-      },
-    );
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || '查询字典数据失败');
-    }
-
-    const result: ApiResponse<DictDataResponse[]> = await response.json();
-    if (result.code !== 200) {
-      throw new Error(result.message || '查询字典数据失败');
-    }
-
-    return (result.data || []).map(mapItem);
+    const data = await get<DictDataResponse[]>(`${DICT_PREFIX}/data/getDictDataByCode`, { dictCode: code });
+    return (data || []).map(mapItem);
   }
 
   /**
    * 创建字典数据
-   * POST /data
    */
   async createData(payload: DictDataRequest): Promise<DictionaryItem> {
-    const response = await fetch(`${this.baseUrl}${DICT_PREFIX}/data`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': localStorage.getItem('auth_token') || '',
-      },
-      body: JSON.stringify(dataToBody(payload)),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || '创建字典数据失败');
-    }
-
-    const result: ApiResponse<DictDataResponse> = await response.json();
-    if (result.code !== 200) {
-      throw new Error(result.message || '创建字典数据失败');
-    }
-
-    return mapItem(result.data);
+    const data = await post<DictDataResponse>(`${DICT_PREFIX}/data`, dataToBody(payload));
+    return mapItem(data);
   }
 
   /**
    * 更新字典数据
-   * PUT /data/{id}
    */
   async updateData(id: string, payload: DictDataRequest): Promise<DictionaryItem> {
-    const response = await fetch(`${this.baseUrl}${DICT_PREFIX}/data/${Number(id)}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': localStorage.getItem('auth_token') || '',
-      },
-      body: JSON.stringify(dataToBody(payload)),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || '更新字典数据失败');
-    }
-
-    const result: ApiResponse<DictDataResponse> = await response.json();
-    if (result.code !== 200) {
-      throw new Error(result.message || '更新字典数据失败');
-    }
-
-    return mapItem(result.data);
+    const data = await put<DictDataResponse>(`${DICT_PREFIX}/data/${Number(id)}`, dataToBody(payload));
+    return mapItem(data);
   }
 
   /**
    * 批量删除字典数据（单个删除也走 batch）
-   * DELETE /data/batch  body: [id, ...]
+   * DELETE /admin/dict/data/batch
    */
   async batchDeleteData(ids: string[]): Promise<void> {
-    const response = await fetch(`${this.baseUrl}${DICT_PREFIX}/data/batch`, {
+    const response = await fetch(`/api${DICT_PREFIX}/data/batch`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -361,7 +222,7 @@ class DictionaryAPI {
       throw new Error(error.message || '删除字典数据失败');
     }
 
-    const result: ApiResponse<unknown> = await response.json();
+    const result = await response.json();
     if (result.code !== 200) {
       throw new Error(result.message || '删除字典数据失败');
     }

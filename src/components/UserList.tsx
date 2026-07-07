@@ -16,6 +16,10 @@ export function UserList({ refreshKey, openModal }: UserListProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<Set<number>>(new Set());
   const [keyword, setKeyword] = useState('');
+  // 用 ref 保存最新搜索词，使 loadUsers 不依赖 keyword，
+  // 从而输入时不会触发实时搜索（仅点击搜索图标/回车时由 handleSearch 触发）
+  const keywordRef = useRef(keyword);
+  keywordRef.current = keyword;
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
   const [total, setTotal] = useState(0);
@@ -253,8 +257,9 @@ export function UserList({ refreshKey, openModal }: UserListProps) {
 
   // 初始加载 / 翻页 / 搜索 / refreshKey 变化时重新加载
   // 用参数签名去重，规避 React StrictMode 开发模式下的重复挂载请求
+  // 注意：使用 keywordRef.current 而不是 keyword，避免输入时触发实时搜索
   useEffect(() => {
-    const key = `p${currentPage}:k${keyword}:n${searchNonce}:r${refreshKey ?? 0}`;
+    const key = `p${currentPage}:k${keywordRef.current}:n${searchNonce}:r${refreshKey ?? 0}`;
     if (lastFetchKey.current === key) return;
     lastFetchKey.current = key;
     loadUsers();

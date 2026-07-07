@@ -57,8 +57,8 @@ function MainApp() {
     setModalState({ type: 'none' });
 
     // 只有在明确需要刷新时才刷新列表
-    // editRole 不触发刷新，通过全局事件机制更新本地数据
-    if (shouldRefresh === true && ['createRole', 'roleMember', 'rolePermission', 'createUser', 'editUser', 'selectRole', 'userPermission', 'resetPassword'].includes(currentType)) {
+    // editRole 和 editUser 不触发刷新，通过全局事件机制更新本地数据
+    if (shouldRefresh === true && ['createRole', 'roleMember', 'rolePermission', 'createUser', 'selectRole', 'userPermission', 'resetPassword'].includes(currentType)) {
       setRefreshKey(prev => prev + 1);
     }
   };
@@ -85,7 +85,11 @@ function MainApp() {
             (window as any).updatedRoleData = updatedRole;
           }} />} />
           <Route path="/users" element={<UserList refreshKey={refreshKey} openModal={handleOpenModal} />} />
-          <Route path="/users/:id" element={<UserDetail refreshKey={refreshKey} openModal={handleOpenModal} />} />
+          <Route path="/users/:id" element={<UserDetail refreshKey={refreshKey} openModal={handleOpenModal} onUserDataUpdate={(updatedUser) => {
+              // 本地更新用户数据，不需要重新请求服务器
+              // 通过全局方式传递给 UserDetail
+              (window as any).updatedUserData = updatedUser;
+            }} />} />
           <Route
             path="/permissions"
             element={
