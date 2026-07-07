@@ -216,7 +216,7 @@ class UserAPI {
         'Content-Type': 'application/json',
         'Authorization': localStorage.getItem('auth_token') || '',
       },
-      body: JSON.stringify({ ids }),
+      body: JSON.stringify(ids), // 直接发送数组，不是 { ids } 对象
     });
 
     if (!response.ok) {
