@@ -4,6 +4,7 @@ import { PermissionModal } from './PermissionModals';
 import { permissionAPI, PermissionRequest } from '../api/permissionApi';
 import { ConfirmModal } from './ConfirmModal';
 import { toast } from '../utils/toastHelpers';
+import { dictAPI } from '../api/dictApi';
 import type { Permission } from '../types';
 
 interface PermissionManagementProps {
@@ -20,6 +21,7 @@ export function PermissionManagement({
   const [pendingDeletePermission, setPendingDeletePermission] = useState<Permission | null>(null);
   const [pagination, setPagination] = useState({ current: 1, size: 10, total: 0, pages: 0 });
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [serviceOptions, setServiceOptions] = useState<Array<{ value: string; label: string }>>([]);
   const isLoadingData = useRef(false);
   const lastRefreshKey = useRef(0);
   const searchKeywordRef = useRef(searchKeyword);
@@ -177,6 +179,29 @@ export function PermissionManagement({
 
     prevSearchKeyword.current = currentKeyword;
   }, [searchKeyword, loadPermissions]);
+
+  // 加载产品服务字典数据（组件加载时只调用一次）
+  const [loadingServiceOptions, setLoadingServiceOptions] = useState(true);
+
+  useEffect(() => {
+    const loadServiceOptions = async () => {
+      try {
+        setLoadingServiceOptions(true);
+        const data = await dictAPI.getDataByCode('service_code');
+        setServiceOptions(data.map(item => ({
+          value: item.value,
+          label: item.label
+        })));
+      } catch (error) {
+        console.error('加载产品服务失败:', error);
+        setServiceOptions([]);
+      } finally {
+        setLoadingServiceOptions(false);
+      }
+    };
+
+    loadServiceOptions();
+  }, []); // 空依赖数组，只执行一次
 
   // 当 pendingExpandParentId 变化时，自动展开父节点
   useEffect(() => {
@@ -586,6 +611,8 @@ export function PermissionManagement({
           permission={modalState.permission}
           parentPermission={modalState.parentPermission}
           allPermissions={permissions}
+          serviceOptions={serviceOptions}
+          loadingServiceOptions={loadingServiceOptions}
           onSubmit={handleModalSubmit}
         />
       )}
@@ -599,6 +626,8 @@ interface PermissionModalWrapperProps {
   permission?: Permission;
   parentPermission?: Permission;
   allPermissions?: Permission[];
+  serviceOptions?: Array<{ value: string; label: string }>;
+  loadingServiceOptions?: boolean;
   onSubmit?: (data: PermissionRequest) => Promise<void>;
 }
 
@@ -607,6 +636,8 @@ export function PermissionModalWrapper({
   permission,
   parentPermission,
   allPermissions = [],
+  serviceOptions = [],
+  loadingServiceOptions = false,
   onSubmit,
 }: PermissionModalWrapperProps) {
   const [submitting, setSubmitting] = useState(false);
@@ -641,6 +672,8 @@ export function PermissionModalWrapper({
       onClose={onClose}
       permission={permission}
       parentPermission={parentPermission}
+      serviceOptions={serviceOptions}
+      loadingServiceOptions={loadingServiceOptions}
       onSubmit={handleSubmit}
       allPermissions={allPermissions}
     />

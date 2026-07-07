@@ -262,11 +262,11 @@ class DictionaryAPI {
 
   /**
    * 根据字典类型编码查询该类型全部字典数据
-   * GET /data/by-code/{code}
+   * GET /data/getDictDataByCode?dictCode={code}
    */
   async getDataByCode(code: string): Promise<DictionaryItem[]> {
     const response = await fetch(
-      `${this.baseUrl}${DICT_PREFIX}/data/by-code/${encodeURIComponent(code)}`,
+      `${this.baseUrl}${DICT_PREFIX}/data/getDictDataByCode?dictCode=${encodeURIComponent(code)}`,
       {
         method: 'GET',
         headers: {

@@ -6,6 +6,8 @@ interface PermissionModalProps {
   onClose: () => void;
   permission?: Permission;
   parentPermission?: Permission;
+  serviceOptions?: Array<{ value: string; label: string }>;
+  loadingServiceOptions?: boolean;
   onSubmit: (data: any) => void;
   allPermissions?: Permission[];
 }
@@ -14,11 +16,22 @@ export function PermissionModal({
   onClose,
   permission,
   parentPermission,
+  serviceOptions = [],
+  loadingServiceOptions = false,
   onSubmit,
   allPermissions = [],
 }: PermissionModalProps) {
   const isEdit = !!permission;
   const isChild = !!parentPermission;
+
+  // 调试信息
+  useEffect(() => {
+    if (isEdit && permission) {
+      console.log('编辑权限 - serviceCode:', permission.serviceCode);
+      console.log('编辑权限 - serviceOptions 详细:', serviceOptions.map(opt => ({ value: opt.value, label: opt.label })));
+      console.log('匹配检查:', serviceOptions.some(opt => opt.value === permission.serviceCode));
+    }
+  }, [isEdit, permission, serviceOptions]);
 
   // 用于排序输入的临时状态
   const [sortInput, setSortInput] = useState<string>(() => {
@@ -237,14 +250,28 @@ export function PermissionModal({
               {/* 产品服务 */}
               <div>
                 <label className="block mb-2 text-sm font-normal text-gray-700">产品服务</label>
-                <input
-                  type="text"
-                  value={formData.serviceCode}
-                  onChange={(e) => setFormData({ ...formData, serviceCode: e.target.value })}
-                  placeholder="如: system"
-                  className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all"
-                  maxLength={50}
-                />
+                <div className="relative">
+                  <select
+                    value={formData.serviceCode}
+                    onChange={(e) => setFormData({ ...formData, serviceCode: e.target.value })}
+                    disabled={loadingServiceOptions}
+                    className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all appearance-none bg-white pr-10 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">{loadingServiceOptions ? '加载中...' : '请选择产品服务'}</option>
+                    {serviceOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+                    {loadingServiceOptions ? (
+                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* 状态：仅新增子项时显示 */}
