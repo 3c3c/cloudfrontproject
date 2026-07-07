@@ -115,14 +115,14 @@ class RoleAPI {
 
   /**
    * 查询用户未拥有的角色（为用户分配角色时的候选列表）
-   * GET /auth/roles/not-assigned?userId=&keyword=
+   * GET /auth/users/notAssignedRole?userId=&keyword=
    */
   async getNotAssignedRoles(userId: string | number, keyword?: string): Promise<RoleResponse[]> {
     const queryParams = new URLSearchParams();
     queryParams.append('userId', userId.toString());
     if (keyword) queryParams.append('keyword', keyword);
 
-    const url = `${this.baseUrl}${ROLE_PREFIX}/not-assigned?${queryParams.toString()}`;
+    const url = `${this.baseUrl}/auth/users/notAssignedRole?${queryParams.toString()}`;
 
     const response = await fetch(url, {
       method: 'GET',
@@ -146,14 +146,14 @@ class RoleAPI {
 
   /**
    * 根据用户ID查询角色列表（用户已拥有的角色）
-   * GET /auth/roles/user/{userId}?keyword=
+   * GET /auth/users/getRolesByUserId/{userId}?keyword=
    * keyword 可模糊匹配角色编码或角色说明，不区分大小写
    */
   async getRolesByUserId(userId: string | number, keyword?: string): Promise<RoleResponse[]> {
     const queryParams = new URLSearchParams();
     if (keyword) queryParams.append('keyword', keyword);
 
-    const url = `${this.baseUrl}${ROLE_PREFIX}/user/${userId}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    const url = `${this.baseUrl}/auth/users/getRolesByUserId/${userId}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
 
     const response = await fetch(url, {
       method: 'GET',
